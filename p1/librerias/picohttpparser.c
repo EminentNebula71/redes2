@@ -33,9 +33,6 @@
 #else
 #include <x86intrin.h>
 #endif
-#endif
-#include "picohttpparser.h"
-
 #if __GNUC__ >= 3
 #define likely(x) __builtin_expect(!!(x), 1)
 #define unlikely(x) __builtin_expect(!!(x), 0)
@@ -46,6 +43,9 @@
 
 #ifdef _MSC_VER
 #define ALIGNED(n) _declspec(align(n))
+#endif
+#include "picohttpparser.h"
+
 #else
 #define ALIGNED(n) __attribute__((aligned(n)))
 #endif

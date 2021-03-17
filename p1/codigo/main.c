@@ -10,27 +10,55 @@
 #include <errno.h>
 #include <time.h>
 #include <assert.h>
+#include <pthread.h>
 
-/*NADIE SABE QUE HACER AQUI
+/*NADIE SABE QUE HACER AQUI⠀⠀⠀⠀⠀⠀
 NO ESTA BIEN HECHO*/
+
+
 int main(int argc, char ∗∗argv){
-    int listenfd, connfd;
+    int listenfd, connfd, child, socketfd, bind_result;
     socklen_t clilen, addrlen;
     struct sockaddr ∗cliaddr;
+    struct sockaddr_in watashi_no_aduresu;
+    config config;
+    pthread_t thread_id;
+
+    config = getServerConfig();
+
+    /*SOCKET*/
+    if(socketfd = socket(AF_INET, SOCK_STREAM, 0) < 0){
+        fprintf(stdout, "Error. El socket no se ha abierto correctamente");
+        return -1;
+    }
+
+    /*BIND*/
+    watashi_no_aduresu.sin_family = AF_INET;
+    watashi_no_aduresu.sin_port = htons(atoi(config.listen_port));
+    watashi_no_aduresu.sin_addr.s_addr = INADDR_ANY;
+
+    if (bind(socketfd, (struct sockaddr *)&watashi_no_aduresu, sizeof(watashi_no_aduresu)) == -1){
+        fprintf(stdout, "Error al hacer el bind\n");
+        printf("%s\n", strerror(errno));
+        return -2;
+    }
+
+    /*LISTEN*/
+    if (listen(sockfd, atoi(config.max_clientes)) != 0){
+        perror("Error al hacer el listen");
+        exit(errno);
+    }
     
-    /* Contiene las llamadas a socket(), bind() y listen() */
-    listenfd = Tcp_listen(argv[1], argv[2], &addrlen);
- 
+    /*MISTERIO A TERMINAR*/
     for ( ; ; ) {
         connfd = Accept(listenfd, cliaddr, &clilen);
-        if ( (childpid = Fork()) == 0) {
-            process_request(connfd); /* Procesa la peticion */
-        exit(0); 
+        pthread_create(&thread_id, NULL, FUNCIÓN QUE CREEMOS, (void *)&connfd);
         }
 
     /* Padre cierra el descriptor de la conexion del hijo (duplicada) */
-    Close(connfd);
     }
+    close(socketfd);
+    return 0;
  }
 
 

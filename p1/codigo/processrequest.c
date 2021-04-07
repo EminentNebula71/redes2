@@ -20,6 +20,8 @@
 #include "processrequest.h"
 #include "../librerias/picohttpparser.h"
 
+#define MAX_BUFFER 16384
+
 struct
 {
     char *tipo;
@@ -84,13 +86,17 @@ void *processRequest(void *clientfd){
     config config = getServerConfig();
     struct phr_header headers[500];
     struct sockaddr client_address;
+    struct stat filestat;
+    time_t tim = time(NULL);
+    struct tm *t_stand = localtime(&tim);
+    struct tm *last_modification;
     int client= *(int*)clientfd;
-    int parse_return, minor_version;
+    int parse_return, minor_version, flag=0, len_arch, file_id, file_length;
     const char * method, *path;
     socklen_t addrlen = sizeof(clientfd);
     size_t num_headers, method_len, path_len;
     ssize_t recv_size, buffer_len, previous_buffer_len;
-    char buffer[16384];
+    char buffer[MAX_BUFFER], path_root[MAX_BUFFER], path_file[MAX_BUFFER], path_file_aux[MAX_BUFFER], tipo[20], script[50], script_2[50];;
 
 
     getpeername(client, (struct sockaddr *)&client_address ,&addrlen);
@@ -118,6 +124,133 @@ void *processRequest(void *clientfd){
             //badRequest()
         }
     }
+    strcpy(path_root, config.server_root);
 
-    //CONTINUAR
+    if(!strncmp(path, "/", path_len)){
+        strcat(path_root, "/index.html");
+        path_len=strlen(path_root);
+    }
+    else{
+        strncat(path_root, path, path_len);
+        path_len=strlen(path_root);
+    }
+
+    if(!strncmp(method, "OPTIONS", 7) || !strncmp(method, "options", 7)){
+        //options(); CREAR
+    }
+
+    if(!strncmp(method, "POST", 4) || !strncmp(method, "post", 4)){
+        char* mensaje = strstr(buffer, "\r\n\r\n"); //MENSAJE????
+        mensaje += 4*sizeof(char);
+        if(!strstr(path_root, "?")){
+
+            strcat(path_root, "?");
+        }
+        else{
+            strcat(path_root, "&");
+        }
+        strcat(path_root, mensaje);
+        path_len += 1 + strlen(mensaje);
+    }
+    strcpy(script_2, path_root);
+    strcpy(script, strtok(script_2, "?"));
+
+    if(!strcmp(script+strlen(script)-3, ".py") || !strcmp(script+strlen(script)-4, ".php")){
+        char command[MAX_BUFFER];
+
+        if(!strcmp(script+strlen(script)-3, ".py"))
+            strcpy(command, "python3 ");
+        else
+            strcpy(command, "php ");
+
+        strcat(command, script);
+        while(strtok(NULL, "=")!=NULL){
+            strcat(command, " ");
+            strcat(command, strtok(NULL, "&"));
+        }
+
+        strcat(command, " > ./htmlfiles/file.txt");
+        if(system(command)==-1)
+            // badRequest()
+            printf("JUAN ANTONIO");
+        else
+            flag = 1;
+        
+        strcpy(path_file, "./htmlfiles/file.txt");
+    }
+    else{
+        strcpy(path_file_aux, path_root);
+        strcpy(path_file, strtok(path_file_aux, "?"));
+    }
+    path_len = strlen(path_file);
+
+    if(stat(path_file, &filestat) < 0){
+        if (flag == 1)
+            system("rm ./htmlfiles/file.txt");
+        // notFound();
+    }
+
+    last_modification = gmtime(&filestat.st_mtime);
+    strcpy(tipo, "none");
+
+    for(int i = 0; i < 11; i++){
+        len_arch = strlen(tipos[i].arch);
+
+        if(!strncmp(path_file + path_len - len_arch, tipos[i].arch, len_arch)){
+            strcpy(tipo, tipos[i].tipo);
+            break;
+        }
+    }
+
+    if(!strcmp(tipo, "none")){
+        if(flag==1){
+            system("rm ./htmlfiles/file.txt");
+        }
+        //badRequest();
+    }
+
+    file_id = open(path_file, O_RDONLY);
+    if (file_id == -1){
+        if(flag == 1)
+            system("rm ./htmlfiles/file.txt");
+        //notFound()
+    }
+
+    file_length = lseek(file_id, 0, SEEK_END);
+    lseek(file_id, 0, SEEK_SET);
+
+    sprintf(buffer, "HTTP/1.%d 200 OK\r\n"
+                    "Date: %s, %d %s %d %d:%d:%d\r\n"
+                    "Server: %s\r\n"
+                    "Last-Modified: %s, %d %s %d %d:%d:%d\r\n"
+                    "Content-Lenght: %d\r\n"
+                    "Content-Type: %s\r\n\r\n",
+            minor_version,
+            dias[t_stand->tm_wday],
+            t_stand->tm_mday, meses[t_stand->tm_mon], t_stand->tm_year + 1900,
+            t_stand->tm_hour, t_stand->tm_min, t_stand->tm_sec,
+            config.server_signature,
+            dias[last_modification->tm_wday],
+            last_modification->tm_mday, meses[last_modification->tm_mon], last_modification->tm_year + 1900,
+            last_modification->tm_hour, last_modification->tm_min, last_modification->tm_sec,
+            file_length,
+            tipo);
+
+    send(client, buffer, strlen(buffer), 0);
+
+    while ((file_length = read(file_id, buffer, MAX_BUFFER))>0){
+        send(client, buffer, file_length, 0);
+    }
+
+    close(file_id);
+    //¿dormir hilo?
+    if (flag==1){
+        system("rm ./htmlfiles/file.txt");
+    }
+    close(client);
+    pthread_exit(NULL);
 }
+
+
+
+//FUNCIONES DE RESPUESTA

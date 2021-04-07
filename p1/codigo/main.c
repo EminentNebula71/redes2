@@ -5,23 +5,28 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <sys/sem.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <semaphore.h>
+#include <arpa/inet.h>
 #include <errno.h>
 #include <time.h>
-#include <assert.h>
+#include <resolv.h>
+#include <unistd.h>
+#include <syslog.h>
 #include <pthread.h>
+#include <assert.h>
 #include "processrequest.h"
-#include "picohttpparser.h"
 
 /*NADIE SABE QUE HACER AQUI⠀⠀⠀⠀⠀⠀
 NO ESTA BIEN HECHO*/
 
 
-int main(int argc, char ∗∗argv){
+int main(int argc, char **argv){
     int listenfd, connfd, child, socketfd, bind_result;
     socklen_t clilen, addrlen;
-    struct sockaddr ∗cliaddr;
+    struct sockaddr *cliaddr;
     struct sockaddr_in watashi_no_aduresu;
     config config;
     pthread_t thread_id;
@@ -29,7 +34,7 @@ int main(int argc, char ∗∗argv){
     config = getServerConfig();
 
     /*SOCKET*/
-    if(socketfd = socket(AF_INET, SOCK_STREAM, 0) < 0){
+    if((socketfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
         fprintf(stdout, "Error. El socket no se ha abierto correctamente");
         return -1;
     }
@@ -46,7 +51,7 @@ int main(int argc, char ∗∗argv){
     }
 
     /*LISTEN*/
-    if (listen(sockfd, atoi(config.max_clientes)) != 0){
+    if (listen(socketfd, atoi(config.max_clients)) != 0){
         perror("Error al hacer el listen");
         exit(errno);
     }
@@ -58,7 +63,6 @@ int main(int argc, char ∗∗argv){
     }
 
     /* Padre cierra el descriptor de la conexion del hijo (duplicada) */
-    }
     close(socketfd);
     return 0;
  }

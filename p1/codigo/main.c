@@ -11,6 +11,8 @@
 #include <time.h>
 #include <assert.h>
 #include <pthread.h>
+#include "processrequest.h"
+#include "picohttpparser.h"
 
 /*NADIE SABE QUE HACER AQUI⠀⠀⠀⠀⠀⠀
 NO ESTA BIEN HECHO*/
@@ -49,11 +51,11 @@ int main(int argc, char ∗∗argv){
         exit(errno);
     }
     
-    /*MISTERIO A TERMINAR*/
-    for ( ; ; ) {
-        connfd = Accept(listenfd, cliaddr, &clilen);
-        pthread_create(&thread_id, NULL, FUNCIÓN QUE CREEMOS, (void *)&connfd);
-        }
+    while(1){
+        clilen = sizeof(cliaddr);
+        connfd = accept(listenfd, cliaddr, &clilen);
+        pthread_create(&thread_id, NULL, &processRequest, (void *)&connfd);
+    }
 
     /* Padre cierra el descriptor de la conexion del hijo (duplicada) */
     }
@@ -66,13 +68,12 @@ int main(int argc, char ∗∗argv){
 * FUNCIÓN: do_daemon()
 * DESCRIPCIÓN: Activa el modo daemon del servidor
 ********/
-void do_daemon()
-{
+void do_daemon(){
     pid_t pid;
 
     pid = fork();
 
-s    if (pid > 0)
+    if (pid > 0)
         exit(EXIT_SUCCESS); //Si es el proceso padre lo cerramos
     if (pid < 0)
         exit(EXIT_FAILURE); //Si hay error en el fork salimos

@@ -43,7 +43,7 @@ struct
 
 
 const char* meses[12]= {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
-const char* dias[7]= {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
+const char* dias[7]= {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
 
 config configu;
 
@@ -87,7 +87,7 @@ config getServerConfig(){
 void *processRequest(void *clientfd){
     configu = getServerConfig();
     struct phr_header headers[500];
-    struct sockaddr client_address;
+    struct sockaddr_in client_address;
     struct stat filestat;
     time_t tim = time(NULL);
     struct tm *t_stand = localtime(&tim);
@@ -95,16 +95,22 @@ void *processRequest(void *clientfd){
     int client= *(int*)clientfd;
     int parse_return, minor_version, flag=0, len_arch, file_id, file_length;
     const char * method, *path;
-    socklen_t addrlen = sizeof(clientfd);
+    socklen_t addrlen = sizeof(client_address);
     size_t num_headers, method_len, path_len;
     ssize_t recv_size, buffer_len, previous_buffer_len;
-    char buffer[MAX_BUFFER], path_root[MAX_BUFFER], path_file[MAX_BUFFER], path_file_aux[MAX_BUFFER], tipo[20], script[50], script_2[50];;
+    char buffer[MAX_BUFFER], path_root[MAX_BUFFER], path_file[MAX_BUFFER], path_file_aux[MAX_BUFFER], tipo[20], script[50], script_2[50];
+    memset(buffer, '\0', MAX_BUFFER);
+    memset(path_root, '\0', MAX_BUFFER);
+    memset(path_file, '\0', MAX_BUFFER);
+    memset(path_file_aux, '\0', MAX_BUFFER);
 
+    pthread_detach(pthread_self());
     getpeername(client, (struct sockaddr *)&client_address ,&addrlen);
-
     while(1){
         recv_size = recv(client, buffer, sizeof(buffer)-1, 0);
         if (recv_size<=0){
+            printf("PET TAMAÑO:%d\n", recv_size);
+            printf("HILO SIN NADA SE VA\n");
             close(client);
             pthread_exit(NULL);
         }
@@ -118,10 +124,12 @@ void *processRequest(void *clientfd){
         if (parse_return >0)
             break;
         else if (parse_return==-1) {
+            printf("PERDIDO_1.48: %s\n", path_file);
             badRequest(client, buffer);
         }
 
         if (parse_return == -2 && buffer_len == sizeof(buffer)){
+            printf("PERDIDO_1.5: %s\n", path_file);
             badRequest(client, buffer);
         }
     }
@@ -170,15 +178,15 @@ void *processRequest(void *clientfd){
             strcat(command, strtok(NULL, "&"));
         }
 
-        strcat(command, " > ./files/file.txt");
+        strcat(command, " > ./files/output.txt");
         if(system(command)==-1){
+            printf("PERDIDO_1: %s\n", path_file);
             badRequest(client, buffer);
-            printf("JUAN ANTONIO");
         }
         else
             flag = 1;
         
-        strcpy(path_file, "./files/file.txt");
+        strcpy(path_file, "./files/output.txt");
     }
     else{
         strcpy(path_file_aux, path_root);
@@ -186,15 +194,13 @@ void *processRequest(void *clientfd){
     }
     path_len = strlen(path_file);
 
-    printf("%s\n", path_file);
     if(stat(path_file, &filestat) < 0){
-        if (flag == 1)
-            system("rm ./files/file.txt");
+        printf("FALTA: %s\n", path_file);
         notFound(client, buffer);
     }
 
     last_modification = gmtime(&filestat.st_mtime);
-    strcpy(tipo, "none");
+    strcpy(tipo, "not_defined");
 
     for(int i = 0; i < 11; i++){
         len_arch = strlen(tipos[i].arch);
@@ -205,10 +211,12 @@ void *processRequest(void *clientfd){
         }
     }
 
-    if(!strcmp(tipo, "none")){
+    if(!strcmp(tipo, "not_defined")){
+        printf("FLAAAAAAAAAAAAAAAAAAAAAAAAAAAAGGGGGGGGGGGGGGGGGGGGGGGG %d\n", flag);
         if(flag==1){
-            system("rm ./files/file.txt");
+            system("rm ./files/output.txt");
         }
+        printf("PERDIDO_4: %s\n", path_file);
         badRequest(client, buffer);
     }
 
@@ -216,7 +224,8 @@ void *processRequest(void *clientfd){
     if (file_id == -1){
         printf("FRANCISCO ANTONIO\n");
         if(flag == 1)
-            system("rm ./files/file.txt");
+            system("rm ./files/output.txt");
+        printf("FALTA_2: %s\n", path_file);
         notFound(client, buffer);
 
     }
@@ -248,17 +257,16 @@ void *processRequest(void *clientfd){
     }
 
     close(file_id);
-    //¿dormir hilo?
+    sleep(1);
     if (flag==1){
-        system("rm ./files/file.txt");
+        system("rm ./files/output.txt");
     }
+    printf("Salida_exitosa  %s\n", path_file);
     close(client);
     pthread_exit(NULL);
 }
 
-
 //FUNCIONES DE RESPUESTA
-
 
 void options(int cliente, char* buffer){
     time_t tim = time(NULL);

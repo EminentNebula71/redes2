@@ -19,19 +19,16 @@
 #include <assert.h>
 #include "processrequest.h"
 
-/*NADIE SABE QUE HACER AQUI⠀⠀⠀⠀⠀⠀
-NO ESTA BIEN HECHO*/
-
 
 int main(int argc, char **argv){
     int listenfd, connfd, child, socketfd, bind_result;
     socklen_t clilen, addrlen;
     struct sockaddr cliaddr;
     struct sockaddr_in watashi_no_aduresu;
-    config config;
+    config configu;
     pthread_t thread_id;
 
-    config = getServerConfig();
+    configu = getServerConfig();
 
     /*SOCKET*/
     if((socketfd = socket(AF_INET, SOCK_STREAM, 0)) < 0){
@@ -41,7 +38,7 @@ int main(int argc, char **argv){
 
     /*BIND*/
     watashi_no_aduresu.sin_family = AF_INET;
-    watashi_no_aduresu.sin_port = htons(atoi(config.listen_port));
+    watashi_no_aduresu.sin_port = htons(atoi(configu.listen_port));
     watashi_no_aduresu.sin_addr.s_addr = INADDR_ANY;
 
     if (bind(socketfd, (struct sockaddr *)&watashi_no_aduresu, sizeof(watashi_no_aduresu)) == -1){
@@ -51,7 +48,7 @@ int main(int argc, char **argv){
     }
 
     /*LISTEN*/
-    if (listen(socketfd, atoi(config.max_clients)) != 0){
+    if (listen(socketfd, atoi(configu.max_clients)) != 0){
         perror("Error al hacer el listen");
         exit(errno);
     }
@@ -95,7 +92,7 @@ void do_daemon(){
 
     if (chdir("/") < 0)
     {
-        syslog(LOG_ERR, "Error cambiando el directorio actual uwu = \"/\"");
+        syslog(LOG_ERR, "Error cambiando el directorio actual = \"/\"");
         exit(EXIT_FAILURE);
     }
 

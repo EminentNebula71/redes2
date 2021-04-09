@@ -22,6 +22,7 @@
 
 #define MAX_BUFFER 16384
 
+
 struct
 {
     char *tipo;
@@ -44,46 +45,47 @@ struct
 const char* meses[12]= {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 const char* dias[7]= {"Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"};
 
-
+config configu;
 
 
 config getServerConfig(){
-    config config;
     FILE* c;
     int i;
     char* string;
     c=fopen("server.conf", "r");
-    string = malloc(sizeof(config.server_root)*sizeof(char));
-    fgets(string, sizeof(config.server_root), c);
+    string = malloc(sizeof(configu.server_root)*sizeof(char));
+    fgets(string, sizeof(configu.server_root), c);
     strtok(string, "=");
-    strcpy(config.server_root, strtok(NULL, "="));
+    strcpy(configu.server_root, strtok(NULL, "="));
+    free(string);
+    configu.server_root[strlen(configu.server_root)-1] = '\0';
+
+    string = malloc(sizeof(configu.max_clients)*sizeof(char));
+    fgets(string, sizeof(configu.max_clients), c);
+    strtok(string, "=");
+    strcpy(configu.max_clients, strtok(NULL, "="));
     free(string);
 
-    string = malloc(sizeof(config.max_clients)*sizeof(char));
-    fgets(string, sizeof(config.max_clients), c);
+    string = malloc(sizeof(configu.listen_port)*sizeof(char));
+    fgets(string, sizeof(configu.listen_port), c);
     strtok(string, "=");
-    strcpy(config.max_clients, strtok(NULL, "="));
+    strcpy(configu.listen_port, strtok(NULL, "="));
     free(string);
 
-    string = malloc(sizeof(config.listen_port)*sizeof(char));
-    fgets(string, sizeof(config.listen_port), c);
+    string = malloc(sizeof(configu.server_signature)*sizeof(char));
+    fgets(string, sizeof(configu.server_signature), c);
     strtok(string, "=");
-    strcpy(config.listen_port, strtok(NULL, "="));
-    free(string);
-
-    string = malloc(sizeof(config.server_signature)*sizeof(char));
-    fgets(string, sizeof(config.server_signature), c);
-    strtok(string, "=");
-    strcpy(config.server_signature, strtok(NULL, "="));
+    strcpy(configu.server_signature, strtok(NULL, "="));
     free(string);
 
     fclose(c);
-    return config;
+    return configu;
 }
 
 
+
 void *processRequest(void *clientfd){
-    config config = getServerConfig();
+    configu = getServerConfig();
     struct phr_header headers[500];
     struct sockaddr client_address;
     struct stat filestat;
@@ -97,7 +99,6 @@ void *processRequest(void *clientfd){
     size_t num_headers, method_len, path_len;
     ssize_t recv_size, buffer_len, previous_buffer_len;
     char buffer[MAX_BUFFER], path_root[MAX_BUFFER], path_file[MAX_BUFFER], path_file_aux[MAX_BUFFER], tipo[20], script[50], script_2[50];;
-
 
     getpeername(client, (struct sockaddr *)&client_address ,&addrlen);
 
@@ -117,14 +118,14 @@ void *processRequest(void *clientfd){
         if (parse_return >0)
             break;
         else if (parse_return==-1) {
-            //badRequest() CREAR
+            badRequest(client, buffer);
         }
 
         if (parse_return == -2 && buffer_len == sizeof(buffer)){
-            //badRequest()
+            badRequest(client, buffer);
         }
     }
-    strcpy(path_root, config.server_root);
+    strcpy(path_root, configu.server_root);
 
     if(!strncmp(path, "/", path_len)){
         strcat(path_root, "/index.html");
@@ -136,7 +137,7 @@ void *processRequest(void *clientfd){
     }
 
     if(!strncmp(method, "OPTIONS", 7) || !strncmp(method, "options", 7)){
-        //options(); CREAR
+        options(client, buffer);
     }
 
     if(!strncmp(method, "POST", 4) || !strncmp(method, "post", 4)){
@@ -169,14 +170,15 @@ void *processRequest(void *clientfd){
             strcat(command, strtok(NULL, "&"));
         }
 
-        strcat(command, " > ./htmlfiles/file.txt");
-        if(system(command)==-1)
-            // badRequest()
+        strcat(command, " > ./files/file.txt");
+        if(system(command)==-1){
+            badRequest(client, buffer);
             printf("JUAN ANTONIO");
+        }
         else
             flag = 1;
         
-        strcpy(path_file, "./htmlfiles/file.txt");
+        strcpy(path_file, "./files/file.txt");
     }
     else{
         strcpy(path_file_aux, path_root);
@@ -184,10 +186,11 @@ void *processRequest(void *clientfd){
     }
     path_len = strlen(path_file);
 
+    printf("%s\n", path_file);
     if(stat(path_file, &filestat) < 0){
         if (flag == 1)
-            system("rm ./htmlfiles/file.txt");
-        // notFound();
+            system("rm ./files/file.txt");
+        notFound(client, buffer);
     }
 
     last_modification = gmtime(&filestat.st_mtime);
@@ -204,32 +207,34 @@ void *processRequest(void *clientfd){
 
     if(!strcmp(tipo, "none")){
         if(flag==1){
-            system("rm ./htmlfiles/file.txt");
+            system("rm ./files/file.txt");
         }
-        //badRequest();
+        badRequest(client, buffer);
     }
 
     file_id = open(path_file, O_RDONLY);
     if (file_id == -1){
+        printf("FRANCISCO ANTONIO\n");
         if(flag == 1)
-            system("rm ./htmlfiles/file.txt");
-        //notFound()
+            system("rm ./files/file.txt");
+        notFound(client, buffer);
+
     }
 
     file_length = lseek(file_id, 0, SEEK_END);
     lseek(file_id, 0, SEEK_SET);
 
     sprintf(buffer, "HTTP/1.%d 200 OK\r\n"
-                    "Date: %s, %d %s %d %d:%d:%d\r\n"
                     "Server: %s\r\n"
+                    "Date: %s, %d %s %d %d:%d:%d\r\n"
                     "Last-Modified: %s, %d %s %d %d:%d:%d\r\n"
                     "Content-Lenght: %d\r\n"
                     "Content-Type: %s\r\n\r\n",
             minor_version,
+            configu.server_signature,
             dias[t_stand->tm_wday],
             t_stand->tm_mday, meses[t_stand->tm_mon], t_stand->tm_year + 1900,
             t_stand->tm_hour, t_stand->tm_min, t_stand->tm_sec,
-            config.server_signature,
             dias[last_modification->tm_wday],
             last_modification->tm_mday, meses[last_modification->tm_mon], last_modification->tm_year + 1900,
             last_modification->tm_hour, last_modification->tm_min, last_modification->tm_sec,
@@ -245,12 +250,79 @@ void *processRequest(void *clientfd){
     close(file_id);
     //¿dormir hilo?
     if (flag==1){
-        system("rm ./htmlfiles/file.txt");
+        system("rm ./files/file.txt");
     }
     close(client);
     pthread_exit(NULL);
 }
 
 
-
 //FUNCIONES DE RESPUESTA
+
+
+void options(int cliente, char* buffer){
+    time_t tim = time(NULL);
+    int minor_version = -1;
+    struct tm *t_stand = localtime(&tim);
+    sprintf(buffer, "HTTP/1.%d 200 OK\r\n"
+                    "Server:%s\r\n"
+                    "Allow: OPTIONS, GET, POST\r\n"
+                    "Date: %s, %d %s %d %d:%d:%d\r\n"
+                    "Content-Lenght:%d\r\n\r\n",
+            minor_version,
+            configu.server_signature,
+            dias[t_stand->tm_wday],
+            t_stand->tm_mday, meses[t_stand->tm_mon], t_stand->tm_year + 1900,
+            t_stand->tm_hour, t_stand->tm_min, t_stand->tm_sec,
+            0);
+    send(cliente, buffer, strlen(buffer), 0);
+    close(cliente);
+    pthread_exit(NULL);
+}
+
+void badRequest(int cliente, char* buffer){
+    time_t tim = time(NULL);
+    int minor_version = -1;
+    struct tm *t_stand = localtime(&tim);
+    sprintf(buffer, "HTTP/1.%d 400 Bad Request\r\n"
+                    "Server:%s\r\n"
+                    "Date: %s, %d %s %d %d:%d:%d\r\n"
+                    "Connection: Closed\r\n"
+                    "Content-Lenght:%d\r\n"
+                    "Content-Type: text/plain\r\n\r\n"
+                    "Not Found flgkjihaEgIUEDGFSBGBKRASÑUJOIBWEGop9iugedrswvGBRW98IU0egwASVDBnhjuoipwsergdVBrwsedfghbVijopUBIYP",
+            minor_version,
+            configu.server_signature,
+            dias[t_stand->tm_wday],
+            t_stand->tm_mday, meses[t_stand->tm_mon], t_stand->tm_year + 1900,
+            t_stand->tm_hour, t_stand->tm_min, t_stand->tm_sec,
+            106);
+    send(cliente, buffer, strlen(buffer), 0);
+    close(cliente);
+    pthread_exit(NULL);
+
+}
+
+void notFound(int cliente, char* buffer){
+    time_t tim = time(NULL);
+    int minor_version = -1;
+    struct tm *t_stand = localtime(&tim);
+    sprintf(buffer, "HTTP/1.%d 404 Not Found\r\n"
+                    "Server:%s\r\n"
+                    "Date: %s, %d %s %d %d:%d:%d\r\n"
+                    "Connection: Closed\r\n"
+                    "Content-Lenght:%d\r\n"                  
+                    "Content-Type: text/plain\r\n\r\n"
+                    "Not Found flgkjihaEgIUEDGFSBGBKRASÑUJOIBWEGop9iugedrswvGBRW98IU0egwASVDBnhjuoipwsergdVBrwsedfghbVijopUBIYP",
+            minor_version,
+            configu.server_signature,
+            dias[t_stand->tm_wday],
+            t_stand->tm_mday, meses[t_stand->tm_mon], t_stand->tm_year + 1900,
+            t_stand->tm_hour, t_stand->tm_min, t_stand->tm_sec,
+            106);
+    send(cliente, buffer, strlen(buffer), 0);
+    close(cliente);
+    pthread_exit(NULL);
+
+}
+

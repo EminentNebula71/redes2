@@ -11,7 +11,9 @@ typedef struct{
 
 
 config getServerConfig();
-
+void options(int cliente, char* buffer);
+void badRequest(int cliente, char* buffer);
+void notFound(int cliente, char* buffer);
 void *processRequest(void *clientfd);
 #endif
 

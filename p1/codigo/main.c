@@ -26,7 +26,7 @@ NO ESTA BIEN HECHO*/
 int main(int argc, char **argv){
     int listenfd, connfd, child, socketfd, bind_result;
     socklen_t clilen, addrlen;
-    struct sockaddr *cliaddr;
+    struct sockaddr cliaddr;
     struct sockaddr_in watashi_no_aduresu;
     config config;
     pthread_t thread_id;
@@ -58,7 +58,7 @@ int main(int argc, char **argv){
     
     while(1){
         clilen = sizeof(cliaddr);
-        connfd = accept(listenfd, cliaddr, &clilen);
+        connfd = accept(socketfd, &cliaddr, &clilen);
         pthread_create(&thread_id, NULL, &processRequest, (void *)&connfd);
     }
 

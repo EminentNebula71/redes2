@@ -287,13 +287,13 @@ void badRequest(int cliente, char* buffer){
                     "Connection: Closed\r\n"
                     "Content-Lenght:%d\r\n"
                     "Content-Type: text/plain\r\n\r\n"
-                    "Not Found flgkjihaEgIUEDGFSBGBKRASÑUJOIBWEGop9iugedrswvGBRW98IU0egwASVDBnhjuoipwsergdVBrwsedfghbVijopUBIYP",
+                    "Bad Request",
             minor_version,
             configu.server_signature,
             dias[t_stand->tm_wday],
             t_stand->tm_mday, meses[t_stand->tm_mon], t_stand->tm_year + 1900,
             t_stand->tm_hour, t_stand->tm_min, t_stand->tm_sec,
-            106);
+            11);
     send(cliente, buffer, strlen(buffer), 0);
     close(cliente);
     pthread_exit(NULL);
@@ -310,13 +310,13 @@ void notFound(int cliente, char* buffer){
                     "Connection: Closed\r\n"
                     "Content-Lenght:%d\r\n"                  
                     "Content-Type: text/plain\r\n\r\n"
-                    "Not Found flgkjihaEgIUEDGFSBGBKRASÑUJOIBWEGop9iugedrswvGBRW98IU0egwASVDBnhjuoipwsergdVBrwsedfghbVijopUBIYP",
+                    "Not Found",
             minor_version,
             configu.server_signature,
             dias[t_stand->tm_wday],
             t_stand->tm_mday, meses[t_stand->tm_mon], t_stand->tm_year + 1900,
             t_stand->tm_hour, t_stand->tm_min, t_stand->tm_sec,
-            106);
+            9);
     send(cliente, buffer, strlen(buffer), 0);
     close(cliente);
     pthread_exit(NULL);

@@ -109,8 +109,6 @@ void *processRequest(void *clientfd){
     while(1){
         recv_size = recv(client, buffer, sizeof(buffer)-1, 0);
         if (recv_size<=0){
-            printf("PET TAMAÑO:%ld\n", recv_size);
-            printf("HILO SIN NADA SE VA\n");
             close(client);
             pthread_exit(NULL);
         }
@@ -124,12 +122,10 @@ void *processRequest(void *clientfd){
         if (parse_return >0)
             break;
         else if (parse_return==-1) {
-            printf("PERDIDO_1.48: %s\n", path_file);
             badRequest(client, buffer);
         }
 
         if (parse_return == -2 && buffer_len == sizeof(buffer)){
-            printf("PERDIDO_1.5: %s\n", path_file);
             badRequest(client, buffer);
         }
     }
@@ -180,7 +176,6 @@ void *processRequest(void *clientfd){
 
         strcat(command, " > ./files/output.txt");
         if(system(command)==-1){
-            printf("PERDIDO_1: %s\n", path_file);
             badRequest(client, buffer);
         }
         else
@@ -195,7 +190,6 @@ void *processRequest(void *clientfd){
     path_len = strlen(path_file);
 
     if(stat(path_file, &filestat) < 0){
-        printf("FALTA: %s\n", path_file);
         notFound(client, buffer);
     }
 
@@ -212,20 +206,16 @@ void *processRequest(void *clientfd){
     }
 
     if(!strcmp(tipo, "not_defined")){
-        printf("FLAAAAAAAAAAAAAAAAAAAAAAAAAAAAGGGGGGGGGGGGGGGGGGGGGGGG %d\n", flag);
         if(flag==1){
             system("rm ./files/output.txt");
         }
-        printf("PERDIDO_4: %s\n", path_file);
         badRequest(client, buffer);
     }
 
     file_id = open(path_file, O_RDONLY);
     if (file_id == -1){
-        printf("FRANCISCO ANTONIO\n");
         if(flag == 1)
             system("rm ./files/output.txt");
-        printf("FALTA_2: %s\n", path_file);
         notFound(client, buffer);
 
     }
@@ -261,7 +251,6 @@ void *processRequest(void *clientfd){
     if (flag==1){
         system("rm ./files/output.txt");
     }
-    printf("Salida_exitosa  %s\n", path_file);
     close(client);
     pthread_exit(NULL);
 }

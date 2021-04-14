@@ -23,7 +23,8 @@ def create_user(nombre, email, url, token):
 
     respuesta = json.loads(request.text)
     if request.status_code != 200:
-        print("ERROR CODE")
+        print("Error, fallo en la creación del usuario")
+        return -2
 
     print("Identidad con ID #" + respuesta['userID'] +"creada correctamente")
     return 1
@@ -39,8 +40,8 @@ def search_user(cadena, url, token):
         return -1
     respuesta = json.loads(request.txt)
     if request.status_code != 200:
-        print("ACA HUBO UN ERROR AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH")
-
+        print("Error, fallo en la busqueda de usuarios")
+        return -2
     if len(respuesta)>1:
         user_number = 1
         print("OK")
@@ -67,7 +68,23 @@ def delete_user(user_id, url, token):
     print("OK")
     respuesta = json.loads(request.text)
     if request.status_code != 200:
-        print("ACA HUBO UN ERROR AYUDA POR FAVOR AYUDITAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+        print("Error, fallo en la eliminación del usuario")
+        return -2
     print("Identidad con ID#"+ user_id+ " borrada correctamente")
     return 1
 
+def getPublicKey(user_id, url, token):
+    print("-> Recuperando clave publica de ID #"+ user_id+ "...")
+    args_petition = {"userID": user_id}
+    try:
+        request = requests.post(url, json= args_petition, headers=token)
+    except requests.ConnectionError:
+        print("Error con la conexion para realizar la peticion")
+        return -1
+    
+    respuesta = json.loads(request.text)
+    if request.status_code != 200:
+        print("Error, fallo en la eliminación del usuario")
+        return -2
+    print("OK")
+    return response["publicKey"]

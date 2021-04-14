@@ -97,7 +97,7 @@ void *processRequest(void *clientfd){
     const char * method, *path;
     socklen_t addrlen = sizeof(client_address);
     size_t num_headers, method_len, path_len;
-    ssize_t recv_size, buffer_len, previous_buffer_len;
+    ssize_t recv_size, buffer_len=0, previous_buffer_len=0;
     char buffer[MAX_BUFFER], path_root[MAX_BUFFER], path_file[MAX_BUFFER], path_file_aux[MAX_BUFFER], tipo[20], script[50], script_2[50];
     memset(buffer, '\0', MAX_BUFFER);
     memset(path_root, '\0', MAX_BUFFER);
@@ -148,7 +148,6 @@ void *processRequest(void *clientfd){
         char* mensaje = strstr(buffer, "\r\n\r\n"); //MENSAJE????
         mensaje += 4*sizeof(char);
         if(!strstr(path_root, "?")){
-
             strcat(path_root, "?");
         }
         else{

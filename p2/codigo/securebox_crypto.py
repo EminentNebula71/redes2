@@ -1,6 +1,6 @@
 from Crypto.PublicKey import RSA
 from Crypto.Hash import SHA256
-from Crypto.Signature import PKCS1_v1_5
+from Crypto.Signature import pkcs1_15
 from Crypto.Random import get_random_bytes
 from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.Util.Padding import pad, unpad
@@ -18,21 +18,20 @@ def sign(message):
     encoded_private_key = open("../keys/private_rsa_key.bin", "rb").read()
     key_RSA=RSA.import_key(encoded_private_key, passphrase=secret_code)
     #Firma el hash usando la clave RSA
-    signer = PKCS1_v1_5.new(key_RSA)
+    signer = pkcs1_15.new(key_RSA)
     sign = signer.sign(message)
     #Guardamos el archivo con la firma de forma temporal
-    x = firma + mensaje
+    x = sign + message
     salida = open("../tmp/firma.dat", "wb")
     salida.write(x)
     salida.close()
     print('OK')
 
 
-def encrypt(file, public_key):
+def encrypt(filename, public_key):
     print("Encriptando archivo.................")
-    secret_code = "Mystery"
     try:
-        archivo = open(file, "rb")
+        archivo = open(filename, "rb")
         message = archivo.read()
         archivo.close()
     except FileNotFoundError:
@@ -54,7 +53,7 @@ def encrypt(file, public_key):
     message_crypted = vector + encoded_key + encoded_message
 
     #Lo guardamos en un fichero
-    new_archive = file + "_encrypted"
+    new_archive = filename + "_encrypted"
     archivo = open(new_archive, "wb")
     archivo.write(message_crypted)
     archivo.close()
@@ -64,31 +63,30 @@ def encrypt(file, public_key):
 
 
 
-def encrypt_sign(file, public_key):
-    secret_code = "Mystery"
+def encrypt_sign(filename, public_key):
     try:
-        archivo = open(file, "rb")
+        archivo = open(filename, "rb")
         message = archivo.read()
         archivo.close()
     except FileNotFoundError:
         print("El archivo no existe, ayuda")
         return -3
     #Mandamos a firmar el fichero
-    signed = sign(message)
+    sign(message)
     #Encriptamos el archivo
     encrypt("../tmp/firma.dat", public_key)
     #Renombramos el archivo temporal
     try:
-        os.rename("../tmp/firma.dat_encrypted", "../files/"+file+"_cifrado")
+        os.rename("../tmp/firma.dat_encrypted", "../files/"+filename+"_cifrado")
     except FileExistsError:
-        os.remove("../files/"+file+"_cifrado")
-        os.rename("tmp/firma.dat_cifrado", "../files/"+file+"_cifrado")
+        os.remove("../files/"+filename+"_cifrado")
+        os.rename("tmp/firma.dat_cifrado", "../files/"+filename+"_cifrado")
     os.remove("../tmp/firma.dat")
-    return "../files/"+ file+ "_cifrado"
+    return "../files/"+ filename+ "_cifrado"
 
 
 def RSA_generator():
-    secret_code = "Mystery"
+    print("Generando par de claves RSA de 2048 bits...")
     new_key = RSA.generate(2048)
     private_key = new_key.exportKey("PEM") 
     public_key = new_key.exportKey("PEM")
@@ -101,10 +99,10 @@ def RSA_generator():
     print("OK")
     return 
 
-def decrypt(file, user):
+def decrypt(filename, user):
     secret_code = "Mystery"
     print("Descifrando fichero.........")
-    archivo = open("../tmp/"+ file, "rb")
+    archivo = open("../tmp/"+ filename, "rb")
     message = archivo.read()
     archivo.close()
     #Cogemos cada parte del contenido del fichero
@@ -114,6 +112,9 @@ def decrypt(file, user):
     #Abrimos la clave privada del usuario
     encoded_key= open("../claves/private_rsa_key.bin", "rb").read()
     RSA_key = RSA.import_key(encoded_key, passphrase = secret_code)
+    #Desencriptamos la clave 
+    cipher_rsa = PKCS1_OAEP.new(RSA_key)
+    key = cipher_rsa.decrypt(key) 
     #Desencripta la clave usando la clave privada
     cipher = AES.new(key, AES.MODE_CBC, vector)
     decoded_message = cipher.decrypt(message)
@@ -125,19 +126,19 @@ def decrypt(file, user):
     print("Comprobando firma.............")
     digest = SHA256.new(message)
     emisor = RSA.import_key(user)
-    
+
     try:
-        PKCS1_v1_5.new(emisor).verify(digest, sign)
+        pkcs1_15.new(emisor).verify(digest, sign)
     except (ValueError, TypeError):
         print("La firma no coincide con la clave de usuario")
         return
     print("OK")
-    salida = open("../downloads/"+ file, "wb")
+    salida = open("../downloads/"+ filename, "wb")
     salida.write(message)
     salida.close()    
 
     try:
-        os.remove("../tmp/"+ file)
+        os.remove("../tmp/"+ filename)
     except FileNotFoundError:
         print()
-    print("El archivo "+ file+ "se ha descargado y comprobado de forma correcta")
+    print("El archivo "+ filename+ "se ha descargado y comprobado de forma correcta")

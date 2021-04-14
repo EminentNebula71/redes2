@@ -18,7 +18,7 @@
 #include <pthread.h>
 #include <assert.h>
 #include "processrequest.h"
-#include "../librerias/picohttpparser.h"
+#include "picohttpparser.h"
 
 #define MAX_BUFFER 16384
 

@@ -2,8 +2,7 @@ CC = gcc -pedantic -pthread
 CFLAGS =  -g
 SRC=./codigo
 OBJ=./obj
-SRCLIB=./librerias
-LIB=./lib
+LIB=./libreria
 
 all: create_dir clean ${OBJ}/picohttpparser.o ${OBJ}/processrequest.o  main
 
@@ -14,11 +13,11 @@ ${OBJ}/processrequest.o: codigo/processrequest.c codigo/processrequest.h
 	$(CC) $(CFLAGS) -I./codigo -c $< -o $@
 	ar rcs ${LIB}/processrequest.a ${OBJ}/processrequest.o
 
-${OBJ}/picohttpparser.o: librerias/picohttpparser.c librerias/picohttpparser.h
+${OBJ}/picohttpparser.o: codigo/picohttpparser.c codigo/picohttpparser.h
 	$(CC) $(CFLAGS) -c $< -o $@
 	ar rcs ${LIB}/picoparserlib.a ${OBJ}/picohttpparser.o
 ${OBJ}/main.o: ${SRC}/main.c
-	$(CC) $(CFLAGS) -I./srclib -c $< -o $@
+	$(CC) $(CFLAGS) -I./src -c $< -o $@
 
 
 clean:

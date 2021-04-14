@@ -109,7 +109,7 @@ void *processRequest(void *clientfd){
     while(1){
         recv_size = recv(client, buffer, sizeof(buffer)-1, 0);
         if (recv_size<=0){
-            printf("PET TAMAÑO:%d\n", recv_size);
+            printf("PET TAMAÑO:%ld\n", recv_size);
             printf("HILO SIN NADA SE VA\n");
             close(client);
             pthread_exit(NULL);

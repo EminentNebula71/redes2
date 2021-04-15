@@ -84,7 +84,7 @@ def getPublicKey(user_id, url, token):
     
     respuesta = json.loads(request.text)
     if request.status_code != 200:
-        print("Error, fallo en la eliminación del usuario")
+        print("Error, clave no encontrada")
         return -2
     print("OK")
     return response["publicKey"]

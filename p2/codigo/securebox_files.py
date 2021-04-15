@@ -26,7 +26,7 @@ def upload(filename, url, token):
     print("Subida realizada correctamente, ID del fichero:" + respuesta['file_id'])
     return 1
 
-def download(file_id, user_id, url, token):
+def download(file_id, user_id, url, token, url_publicKey):
     print("->Descargando fichero de SecureBox...")
     args_petition = {"file_id": file_id}
     try:
@@ -47,7 +47,7 @@ def download(file_id, user_id, url, token):
     do_file.close()
     print("OK")
     print("-> "+ str(len(request.content))+ " bytes descargados correctamente")
-    decrypt(filename, user_id) #Se llama aqui o en cliente??
+    decrypt(filename, user_id, url_publicKey, token) #Se llama aqui o en cliente??
 
     
 

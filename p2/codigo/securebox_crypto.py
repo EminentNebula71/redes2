@@ -4,6 +4,7 @@ from Crypto.Signature import pkcs1_15
 from Crypto.Random import get_random_bytes
 from Crypto.Cipher import AES, PKCS1_OAEP
 from Crypto.Util.Padding import pad, unpad
+from securebox_users import getPublicKey
 import os
 
 
@@ -25,7 +26,7 @@ def sign(message):
     salida = open("../tmp/firma.dat", "wb")
     salida.write(x)
     salida.close()
-    print('OK')
+    print("OK")
 
 
 def encrypt(filename, public_key):
@@ -63,7 +64,7 @@ def encrypt(filename, public_key):
 
 
 
-def encrypt_sign(filename, public_key):
+def encrypt_sign(filename, public_key, url_publicKey, token):
     try:
         archivo = open(filename, "rb")
         message = archivo.read()
@@ -73,6 +74,8 @@ def encrypt_sign(filename, public_key):
         return -3
     #Mandamos a firmar el fichero
     sign(message)
+    #Conseguimos clave publica
+    public_key = getPublicKey(public_key, url_publicKey, token)
     #Encriptamos el archivo
     encrypt("../tmp/firma.dat", public_key)
     #Renombramos el archivo temporal
@@ -99,12 +102,16 @@ def RSA_generator():
     print("OK")
     return 
 
-def decrypt(filename, user):
+def decrypt(filename, user, url_publicKe, token):
     secret_code = "Mystery"
-    print("Descifrando fichero.........")
+    print("-> Descifrando fichero...")
     archivo = open("../tmp/"+ filename, "rb")
     message = archivo.read()
     archivo.close()
+    #Cogemos la clave publica del user
+    user = getPublicKey(user, url_publicKey, token)
+    if key == None:
+        return -1
     #Cogemos cada parte del contenido del fichero
     vector = message[0:16]
     key = message[16:256+16]
@@ -123,7 +130,7 @@ def decrypt(filename, user):
     sign = decoded_message[0:256]
     message = decoded_message[256:]
     #Comprobamos si el hasting es correcto
-    print("Comprobando firma.............")
+    print("-> Verificando firma.............")
     digest = SHA256.new(message)
     emisor = RSA.import_key(user)
 

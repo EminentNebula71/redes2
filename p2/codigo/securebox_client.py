@@ -6,6 +6,7 @@ from securebox_crypto import *
 from securebox_files import *
 from securebox_users import *
 import sys
+import argparse
 
 parser = argparse.ArgumentParser(description = "Opciones posibles")
 
@@ -21,7 +22,7 @@ parser.add_argument("--source_id", dest="source_id", metavar="id", nargs=1,
                     help="ID del emisor del fichero.")
 parser.add_argument("--dest_id", dest="dest_id", metavar="id", nargs=1,
                     help="ID del receptor del fichero.")          
-parser.add_argument("--list_files", dest="list_files", help="Lista todos los ficheros pertenecientes al usuario")   
+parser.add_argument("--list_files", dest="list_files", action="store_true", help="Lista todos los ficheros pertenecientes al usuario")   
 parser.add_argument("--download", dest="download", metavar="id_fichero", nargs=1,
                     help= "Recupera un fichero con ID id_fichero del sistema (este ID se genera en la llamada a upload, y debe ser comunicado al receptor). Tras ser descargado, debe ser verificada la firma y, después, descifrado el contenido.")
 parser.add_argument("--delete_file", dest="delete_file", metavar="id_fichero", nargs=1,
@@ -33,15 +34,16 @@ parser.add_argument("--sign", dest="sign", metavar="fichero", nargs=1,
 parser.add_argument("--enc_sign", dest="enc_sign", metavar="fichero", nargs=1,
                     help="Cifra y firma un fichero, combinando funcionalmente las dos opciones anteriores.")
 
+args=parser.parse_args()
 
 
 if len(sys.argv) < 2:
     print("Pon algo chiquillo")
     sys.exit()
 
-if not os.path.isdir('../downloads'):
+if not os.path.isdir('../download_files'):
     try:
-        os.mkdir('../downloads')
+        os.mkdir('../download_files')
     except OSError:
         print('Error al generar los directorios necesarios, asegurese de que el programa puede modificar directorios')
 
@@ -66,10 +68,10 @@ if not os.path.isdir('../claves'):
 
 config = open('../config.conf', 'r')
 api_url=config.readlines(1)
-api_url=str(server_url)[11:]
+api_url=str(api_url)[12:43]
 
 auth_token=config.readlines(2)
-auth_token=str(auth_token)[10:]
+auth_token=str(auth_token)[10:33]
 config.close()
 
 token={'Authorization' : auth_token}
@@ -103,7 +105,7 @@ if args.upload:
     
 if args.list_files:
     url = api_url + "/files/list"
-    list_files(args.list_files[0], url, token)
+    list_files(url, token)
 
 if args.delete_file:
     url = api_url + "/files/delete"
@@ -113,7 +115,7 @@ if args.download:
     if not args.source_id:
         print("Escribe la ID del usuario que ha emitido este fichero con --dest_id")
         sys.exit()
-    url_publicKey = api_url + "/files/getPublicKey"
+    url_publicKey = api_url + "/users/getPublicKey"
     url = api_url + "/files/download"
     download(args.download[0], args.source_id[0], url, token, url_publicKey)
 
@@ -126,7 +128,7 @@ if args.encrypt:
         print("Escribe la ID del usuario al que vas a enviar el fichero con --dest_id")
         sys.exit()
 
-    url = server_url + "/files/getPublicKey"
+    url = api_url + "/users/getPublicKey"
     key = getPublicKey(args.dest_id[0], url, token)
     if key == None:
         sys.exit()
@@ -158,7 +160,5 @@ if args.enc_sign:
         sys.exit()
     
     url = api_url + "/files/getPublicKey"
-    key = getPublicKey(args.dest_id[0], url, token)
-    if key == None:
-        sys.exit()
-    encrypt_sign(args.enc_sign[0], key)
+    url_publicKey = api_url + "/users/getPublicKey"
+    encrypt_sign(args.enc_sign[0], args.dest_id[0], url_publicKey, token)

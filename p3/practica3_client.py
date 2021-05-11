@@ -3,6 +3,12 @@ from appJar import gui
 from PIL import Image, ImageTk
 import numpy as np
 import cv2
+import socket
+import DS
+
+global sock
+
+sock = None
 
 class VideoClient(object):
 
@@ -12,6 +18,31 @@ class VideoClient(object):
 		# Creamos una variable que contenga el GUI principal
 		self.app = gui("Redes2 - P2P", window_size)
 		self.app.setGuiPadding(10,10)
+
+
+		#Inicio de sesion
+		self.app.addLabelEntry("Nombre de usuario")
+		self.app.addLabelEntry("Contraseña")
+
+		
+		hostname = socket.gethostname()
+		ip_address = socket.gethostbyname(hostname)
+		self.app.addLabelEntry("IP")
+		self.app.setEntry("IP", ip_address)
+		self.app.addLabelEntry("Puerto")
+		self.app.setEntry("Puerto", 8000)
+
+		self.app.addButton("Iniciar Sesion", self.buttonsCallback)
+		#PRIMERA VERSION DE BOTONES
+		self.app.addButtons(["Pausar", "Reaunudar", "Colgar"], self.buttonsCallback)
+
+	def home(self):
+		#Quitamos info del login
+		self.app.hideLabel("Nombre de usuario")
+		self.app.hideLabel("Contraseña")
+		self.app.hideLabel("IP")
+		self.app.hideLabel("Puerto")
+		self.app.hideButton("Iniciar Sesion")
 
 		# Preparación del interfaz
 		self.app.addLabel("title", "Cliente Multimedia P2P - Redes2 ")
@@ -24,8 +55,10 @@ class VideoClient(object):
 		self.app.registerEvent(self.capturaVideo)
 
 		# Añadir los botones
-		self.app.addButtons(["Conectar", "Colgar", "Salir"], self.buttonsCallback)
+		self.app.addButtons(["Llamar", "Listar usuarios", "Buscar usuario", "Salir"], self.buttonsCallback)
 		
+
+
 		# Barra de estado
 		# Debe actualizarse con información útil sobre la llamada (duración, FPS, etc...)
 		self.app.addStatusbar(fields=2)
@@ -65,15 +98,56 @@ class VideoClient(object):
 				
 	# Función que gestiona los callbacks de los botones
 	def buttonsCallback(self, button):
+		global sock
+
 		#AÑADIR FUNCIONALIDAD POR CADA BOTON AÑADIDO
-		
-	    if button == "Salir":
-	    	# Salimos de la aplicación
-	        self.app.stop()
-	    elif button == "Conectar":
-	        # Entrada del nick del usuario a conectar    
-	        nick = self.app.textBox("Conexión", 
-	        	"Introduce el nick del usuario a buscar")        
+		if button == "Salir":
+			# Salimos de la aplicación
+			sock.close()
+			self.app.stop()
+		elif button == "Iniciar sesion":
+			# Entrada del nick del usuario a conectar    
+			nick = self.app.getEntry("Nombre de usuario")
+			password = self.app.getEntry("Contraseña")      
+			ip = self.app.getEntry("IP")
+			port = self.app.getEntry("Puerto")
+
+			resp = DS.register(nick, password, ip, port, 'v0')
+
+			if resp == "NOK":
+				self.app.errorBox("Inicio de sesión", "Error en el proceso de inicio de sesión")
+			else:
+				#AQUI HACE COSAS 
+				self.home()
+		elif button == "Buscar usuario":
+			nick = self.app.textBox("Buscar", "Introduce el nombre del usuario a buscar")
+			if not nick:
+				self.app.errorBox("Introduce un nombre de usuario")				
+			else:
+				nick_query = DS.query(nick)
+				if not nick_query:
+					self.app.errorBox('No encontrado', 'El usuario con nick: '+ nick+ ' no existe')
+				else:
+					message = 'Nick: ' + nick_query['nick']+ '\n'
+					self.app.infoBox("Usuario: " + message)
+		elif button == "Listar usuarios":
+			users = DS.list_users()
+			self.app.infoBox("Usuarios: ", users)
+		elif button == "Llamar":
+			#Funcionalidad de llamar, aun no sabemos con certeza como llevarla a cabo
+			print("NINE LIVE BLADE WORKS")
+
+		elif button == "Pausar":
+			##Funcionalidad de pausa
+			print("PAUSATE")
+		elif button == "Reanudar":
+			print("TRACE ON")
+
+		elif button == "Colgar":
+			print("TRIGGER OFF")
+
+
+
 
 if __name__ == '__main__':
 

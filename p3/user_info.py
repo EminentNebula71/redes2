@@ -1,17 +1,35 @@
-import os
+import sys
 
+user_info = {
+    'nick': None, 'ip': None, 'port':None
+}
 
-global nick
-global enPausa
-global enLlamada
+called_user = {
+    'nick': None, 'ip': None, 'port':None
+}
 
-nick = ' '
-enPausa = False
+global enLlamada 
+global enPausa 
+global on 
+
 enLlamada = False
+enPausa = False
+on = True
 
 
-def set_nick(name):
-    nick=name
+def set_user_info(nick, ip, port):
+    user_info['nick']= nick
+    user_info['ip']= ip
+    user_info['port']= port
 
-def get_nick():
-    return nick
+def set_called_user(nick, ip, port):
+    called_user['nick']= nick
+    called_user['ip']= ip
+    called_user['port']= port
+
+
+def get_user_info():
+    return user_info
+
+def get_called_user():
+    return called_user

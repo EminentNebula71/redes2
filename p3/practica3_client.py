@@ -1,10 +1,13 @@
 # import the library
+import threading
 from appJar import gui
 from PIL import Image, ImageTk
 import numpy as np
 import cv2
 import socket
 import DS
+import user_info
+import videollamada
 
 global sock
 
@@ -33,8 +36,13 @@ class VideoClient(object):
 		self.app.setEntry("Puerto", 8000)
 
 		self.app.addButton("Iniciar Sesion", self.buttonsCallback)
+		
 		#PRIMERA VERSION DE BOTONES
-		self.app.addButtons(["Pausar", "Reaunudar", "Colgar"], self.buttonsCallback)
+		self.app.startSubWindow("Llamada en curso", modal= True)
+		self.app.setSize(640, 250)
+		self.app.addButtons(["Pausar", "Reanudar", "Colgar"], self.buttonsCallback)
+		self.app.stopSubWindow()
+
 
 	def home(self):
 		#Quitamos info del login
@@ -46,13 +54,14 @@ class VideoClient(object):
 
 		# Preparación del interfaz
 		self.app.addLabel("title", "Cliente Multimedia P2P - Redes2 ")
-		self.app.addImage("video", "imgs/webcam.gif")
+		self.app.addImage("video", "img/false_webcam.gif")
 
 		# Registramos la función de captura de video
 		# Esta misma función también sirve para enviar un vídeo
-		self.cap = cv2.VideoCapture(0)
-		self.app.setPollTime(20)
-		self.app.registerEvent(self.capturaVideo)
+		#self.cap = cv2.VideoCapture(0)
+		#self.app.setPollTime(20)
+		#self.app.registerEvent(videollamada.capturaVideo)
+
 
 		# Añadir los botones
 		self.app.addButtons(["Llamar", "Listar usuarios", "Buscar usuario", "Salir"], self.buttonsCallback)
@@ -65,21 +74,6 @@ class VideoClient(object):
 
 	def start(self):
 		self.app.go()
-
-	# Función que captura el frame a mostrar en cada momento
-	def capturaVideo(self):
-		
-		# Capturamos un frame de la cámara o del vídeo
-		ret, frame = self.cap.read()
-		frame = cv2.resize(frame, (640,480))
-		cv2_im = cv2.cvtColor(frame,cv2.COLOR_BGR2RGB)
-		img_tk = ImageTk.PhotoImage(Image.fromarray(cv2_im))		    
-
-		# Lo mostramos en el GUI
-		self.app.setImageData("video", img_tk, fmt = 'PhotoImage')
-
-		# Aquí tendría que el código que envia el frame a la red
-		# ...
 
 	# Establece la resolución de la imagen capturada
 	def setImageResolution(self, resolution):		
@@ -105,7 +99,8 @@ class VideoClient(object):
 			# Salimos de la aplicación
 			sock.close()
 			self.app.stop()
-		elif button == "Iniciar sesion":
+			exit()
+		elif button == "Iniciar Sesion":
 			# Entrada del nick del usuario a conectar    
 			nick = self.app.getEntry("Nombre de usuario")
 			password = self.app.getEntry("Contraseña")      
@@ -117,8 +112,15 @@ class VideoClient(object):
 			if resp == "NOK":
 				self.app.errorBox("Inicio de sesión", "Error en el proceso de inicio de sesión")
 			else:
-				#AQUI HACE COSAS 
+				user = {'nick': nick, 'ip':ip, 'port':int(port)}
+				user_info.set_user_info(nick, ip, port)
+				sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+				user_address = (user['ip'], int(user['port']))
+				sock.bind(user_address)
+				waiting_thread = threading.Thread(target=videollamada.wait_call, args =(self,sock))
+				waiting_thread.start()
 				self.home()
+
 		elif button == "Buscar usuario":
 			nick = self.app.textBox("Buscar", "Introduce el nombre del usuario a buscar")
 			if not nick:
@@ -130,21 +132,31 @@ class VideoClient(object):
 				else:
 					message = 'Nick: ' + nick_query['nick']+ '\n'
 					self.app.infoBox("Usuario: " + message)
+
 		elif button == "Listar usuarios":
 			users = DS.list_users()
 			self.app.infoBox("Usuarios: ", users)
+
 		elif button == "Llamar":
-			#Funcionalidad de llamar, aun no sabemos con certeza como llevarla a cabo
-			print("NINE LIVE BLADE WORKS")
+			nick = self.app.textBox("Llamada", "Introduce el nick de a quien deseas llamar")
+			if nick:
+				user_search = DS.query(nick)
+				if not user_search: 
+					self.app.errorBox('No encontrado', 'El usuario con nick: '+ nick+ ' no existe')
+				else:
+					videollamada.call(self, user_search)
 
 		elif button == "Pausar":
-			##Funcionalidad de pausa
-			print("PAUSATE")
+			user_info.enPausa = True
+			videollamada.hold_call()
+
 		elif button == "Reanudar":
-			print("TRACE ON")
+			user_info.enPausa= False
+			videollamada.resume_call()
 
 		elif button == "Colgar":
-			print("TRIGGER OFF")
+			user_info.enLlamada= False
+			videollamada.end_call()
 
 
 

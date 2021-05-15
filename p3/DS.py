@@ -4,13 +4,11 @@ import socket
 BUFFER = 4096
 configuration = open('./config.conf', 'r')
 host_server = configuration.readlines(1)
-host_server = str(host_server[14:28])
+host_server = str(host_server)[16:30]
 #Prueba de que hicimos bien el coger el nombre
-print(host_server) 
 port = configuration.readlines(1)
-port = str(port[7:11])
+port = str(port)[9:13]
 #Prueba de que hicimos bien el coger el nombre
-print(port) 
 configuration.close()
 server_info = (host_server, int(port))
 
@@ -56,7 +54,7 @@ def list_users():
     message = 'LIST_USERS'
     resp = sendToServer(message)
     print(resp) #Comprobacion de formato de devuelta de usuarios
-
+    #COMPROBADO QUE NOS INTERESAN LOS PARAMETROS 1,2 y 3 de users para nick, ip y port respectivamente
     resp_check = resp.split(' ')
     
     if resp_check[0] == 'NOK':

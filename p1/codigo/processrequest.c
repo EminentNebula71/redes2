@@ -41,13 +41,13 @@ struct
     {"application/pdf", "pdf"}
     };
 
-
+//constantes de tiempo para las respuestas de las peticiones
 const char* meses[12]= {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 const char* dias[7]= {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
 
 config configu;
 
-
+//Coge la informacion del fichero para poder facilitar la conexion con el server
 config getServerConfig(){
     FILE* c;
     int i;
@@ -83,7 +83,7 @@ config getServerConfig(){
 }
 
 
-
+//Esta funcion procesa la peticion es compleja, asi que la vamos a dividir en partes
 void *processRequest(void *clientfd){
     configu = getServerConfig();
     struct phr_header headers[500];
@@ -93,7 +93,7 @@ void *processRequest(void *clientfd){
     struct tm *t_stand = localtime(&tim);
     struct tm *last_modification;
     int client= *(int*)clientfd;
-    int parse_return, minor_version, flag=0, len_arch, file_id, file_length;
+    int parse_return, version, flag=0, file_id, file_length;
     const char * method, *path;
     socklen_t addrlen = sizeof(client_address);
     size_t num_headers, method_len, path_len;
@@ -106,6 +106,7 @@ void *processRequest(void *clientfd){
 
     pthread_detach(pthread_self());
     getpeername(client, (struct sockaddr *)&client_address ,&addrlen);
+    //recibimos y parseamos la peticion
     while(1){
         recv_size = recv(client, buffer, sizeof(buffer)-1, 0);
         if (recv_size<=0){
@@ -117,7 +118,7 @@ void *processRequest(void *clientfd){
         num_headers = 500;
 
         parse_return = phr_parse_request(buffer, buffer_len, &method, &method_len, &path, &path_len,
-                                         &minor_version, headers, &num_headers, previous_buffer_len);
+                                         &version, headers, &num_headers, previous_buffer_len);
 
         if (parse_return >0)
             break;
@@ -129,8 +130,10 @@ void *processRequest(void *clientfd){
             badRequest(client, buffer);
         }
     }
-    strcpy(path_root, configu.server_root);
 
+    strcpy(path_root, configu.server_root);
+    
+    //Modificamos el path
     if(!strncmp(path, "/", path_len)){
         strcat(path_root, "/index.html");
         path_len=strlen(path_root);
@@ -140,33 +143,31 @@ void *processRequest(void *clientfd){
         path_len=strlen(path_root);
     }
 
+    //Aqui observamos que metodo es el que quiere hacer la peticion y llamar a la respuesta correspondiente
+    //Caso de Options
     if(!strncmp(method, "OPTIONS", 7) || !strncmp(method, "options", 7)){
         options(client, buffer);
     }
 
+    //Caso de Post, convertimos la peticion en una peticion get
     if(!strncmp(method, "POST", 4) || !strncmp(method, "post", 4)){
-        char* mensaje = strstr(buffer, "\r\n\r\n"); //MENSAJE????
-        mensaje += 4*sizeof(char);
-        if(!strstr(path_root, "?")){
-            strcat(path_root, "?");
-        }
-        else{
-            strcat(path_root, "&");
-        }
-        strcat(path_root, mensaje);
-        path_len += 1 + strlen(mensaje);
+        changePostPetition(&path_len, path_root, buffer);
     }
+
+
+    //Obtenemos el nombre del script, en caso de haberlo
     strcpy(script_2, path_root);
     strcpy(script, strtok(script_2, "?"));
-
+    //Miramos si es python o php
     if(!strcmp(script+strlen(script)-3, ".py") || !strcmp(script+strlen(script)-4, ".php")){
         char command[MAX_BUFFER];
-
+        //En caso de ser python ponemos python3 al principio del comando
         if(!strcmp(script+strlen(script)-3, ".py"))
             strcpy(command, "python3 ");
+        //En caso de ser php ponemos php al principio del comando
         else
             strcpy(command, "php ");
-
+        //Le metemos el script para realizar su ejecucion
         strcat(command, script);
         while(strtok(NULL, "=")!=NULL){
             strcat(command, " ");
@@ -174,6 +175,7 @@ void *processRequest(void *clientfd){
         }
 
         strcat(command, " > ./files/output.txt");
+        //Si falla hacemos badRequest
         if(system(command)==-1){
             badRequest(client, buffer);
         }
@@ -193,16 +195,8 @@ void *processRequest(void *clientfd){
     }
 
     last_modification = gmtime(&filestat.st_mtime);
-    strcpy(tipo, "not_defined");
-
-    for(int i = 0; i < 11; i++){
-        len_arch = strlen(tipos[i].arch);
-
-        if(!strncmp(path_file + path_len - len_arch, tipos[i].arch, len_arch)){
-            strcpy(tipo, tipos[i].tipo);
-            break;
-        }
-    }
+    
+    strcpy(tipo, comprobar_tipo(path_file, path_len));
 
     if(!strcmp(tipo, "not_defined")){
         if(flag==1){
@@ -210,25 +204,25 @@ void *processRequest(void *clientfd){
         }
         badRequest(client, buffer);
     }
-
+    //abrimos el archivo, si no lo logramos, pero antes hemos marcado que se ha creado hacemos el comando de borrado
+    // y devolvemos notFound
     file_id = open(path_file, O_RDONLY);
     if (file_id == -1){
         if(flag == 1)
             system("rm ./files/output.txt");
         notFound(client, buffer);
-
     }
 
     file_length = lseek(file_id, 0, SEEK_END);
     lseek(file_id, 0, SEEK_SET);
-
+    //estructura de repuesta correcta
     sprintf(buffer, "HTTP/1.%d 200 OK\r\n"
                     "Server: %s\r\n"
                     "Date: %s, %d %s %d %d:%d:%d\r\n"
                     "Last-Modified: %s, %d %s %d %d:%d:%d\r\n"
                     "Content-Lenght: %d\r\n"
                     "Content-Type: %s\r\n\r\n",
-            minor_version,
+            version,
             configu.server_signature,
             dias[t_stand->tm_wday],
             t_stand->tm_mday, meses[t_stand->tm_mon], t_stand->tm_year + 1900,
@@ -254,18 +248,49 @@ void *processRequest(void *clientfd){
     pthread_exit(NULL);
 }
 
+//FUNCIONES DE APOYO
+
+char* comprobar_tipo(char* file, size_t file_len){
+    char *tipo = malloc (sizeof (char) * 20);;
+    int len_arch;
+    strcpy(tipo, "not_defined");
+        for(int i = 0; i < 11; i++){
+            len_arch = strlen(tipos[i].arch);
+            if(!strncmp(file + file_len - len_arch, tipos[i].arch, len_arch)){
+                strcpy(tipo, tipos[i].tipo);
+                break;
+            }
+        }
+    return tipo;
+}
+
+
+void changePostPetition(size_t* path_len, char* path_root, char* buffer){
+    char* mensaje = strstr(buffer, "\r\n\r\n"); 
+        mensaje += 4*sizeof(char);
+        if(!strstr(path_root, "?")){
+            strcat(path_root, "?");
+        }
+        else{
+            strcat(path_root, "&");
+        }
+        strcat(path_root, mensaje);
+       *path_len += 1 + strlen(mensaje);
+}
+
+
 //FUNCIONES DE RESPUESTA
 
 void options(int cliente, char* buffer){
     time_t tim = time(NULL);
-    int minor_version = -1;
+    int version = 0;
     struct tm *t_stand = localtime(&tim);
     sprintf(buffer, "HTTP/1.%d 200 OK\r\n"
                     "Server:%s\r\n"
                     "Allow: OPTIONS, GET, POST\r\n"
                     "Date: %s, %d %s %d %d:%d:%d\r\n"
                     "Content-Lenght:%d\r\n\r\n",
-            minor_version,
+            version,
             configu.server_signature,
             dias[t_stand->tm_wday],
             t_stand->tm_mday, meses[t_stand->tm_mon], t_stand->tm_year + 1900,
@@ -278,7 +303,7 @@ void options(int cliente, char* buffer){
 
 void badRequest(int cliente, char* buffer){
     time_t tim = time(NULL);
-    int minor_version = -1;
+    int version = 0;
     struct tm *t_stand = localtime(&tim);
     sprintf(buffer, "HTTP/1.%d 400 Bad Request\r\n"
                     "Server:%s\r\n"
@@ -287,7 +312,7 @@ void badRequest(int cliente, char* buffer){
                     "Content-Lenght:%d\r\n"
                     "Content-Type: text/plain\r\n\r\n"
                     "Bad Request",
-            minor_version,
+            version,
             configu.server_signature,
             dias[t_stand->tm_wday],
             t_stand->tm_mday, meses[t_stand->tm_mon], t_stand->tm_year + 1900,
@@ -301,7 +326,7 @@ void badRequest(int cliente, char* buffer){
 
 void notFound(int cliente, char* buffer){
     time_t tim = time(NULL);
-    int minor_version = -1;
+    int version = 0;
     struct tm *t_stand = localtime(&tim);
     sprintf(buffer, "HTTP/1.%d 404 Not Found\r\n"
                     "Server:%s\r\n"
@@ -310,7 +335,7 @@ void notFound(int cliente, char* buffer){
                     "Content-Lenght:%d\r\n"                  
                     "Content-Type: text/plain\r\n\r\n"
                     "Not Found",
-            minor_version,
+            version,
             configu.server_signature,
             dias[t_stand->tm_wday],
             t_stand->tm_mday, meses[t_stand->tm_mon], t_stand->tm_year + 1900,
@@ -321,4 +346,3 @@ void notFound(int cliente, char* buffer){
     pthread_exit(NULL);
 
 }
-

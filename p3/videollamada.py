@@ -11,19 +11,20 @@ from PIL import Image, ImageTk
 BUFF = 4096
 
 def call(gui, user_called):
+    #user_called es la respuesta de la query, en un array separado por espacios
+    #tener en cuenta que 0 y 1 son OK y USER_FOUND
     user = user_info.get_user_info()
 
-    called_user_address = (user_called['ip'], user_called['port'])
+    called_user_address = (user_called[3], user_called[4])
 
     message = 'CALLING ' + user['nick'] + ' ' + str(user['port'])
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-    if user['nick'] == user_called['nick']:
+    if user['nick'] == user_called[2]:
         gui.app.infoBox('Llamada denegada.', 'Solo los locos hablan con ellos mismos.')
         return None
 
     sock.connect(called_user_address)
-    print(message)
     sock.send(message.encode())
 
     response = sock.recv(BUFF).decode()
@@ -35,17 +36,17 @@ def call(gui, user_called):
     if response_split[0] == 'CALL_ACCEPTED':
         call_window(gui)
         user_info.set_called_user(user_called)
-        captura_video = threading.Thread(target=capturaVideo, args=(gui, called_user_address),daemon=True)
+        captura_video = threading.Thread(target=capturaVideo, args=(gui, called_user_address))
         captura_video.start()
-        proceso_llamada = threading.Thread(target=proceso_llamada, args=(gui, called_user_address),daemon=True)
+        proceso_llamada = threading.Thread(target=proceso_llamada, args=(gui, called_user_address))
         proceso_llamada.start()
 
 
     elif response_split[0] == 'CALL_DENIED':
-        gui.app.infoBox('Llamada denegada.', 'El usuario '+ user_called['nick']+ ' no quiere hablar contigo, esta con el free fire.')
+        gui.app.infoBox('Llamada denegada.', 'El usuario '+ user_called['nick']+ ' no ha aceptado la llamada.')
         return None
     else:
-        gui.app.infoBox('Llamada denegada.', 'El usuario '+ user_called['nick']+ ' esta ocupado en duo en el apex con otra persona')
+        gui.app.infoBox('Llamada denegada.', 'El usuario '+ user_called['nick']+ ' esta ya en llamada.')
         return None
     
     return None

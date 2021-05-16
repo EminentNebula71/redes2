@@ -45,7 +45,6 @@ def query(name):
     message = 'QUERY ' + name
 
     resp = sendToServer(message)
-    
     return resp
 
 
@@ -53,21 +52,20 @@ def query(name):
 def list_users():
     message = 'LIST_USERS'
     resp = sendToServer(message)
-    print(resp) #Comprobacion de formato de devuelta de usuarios
     #COMPROBADO QUE NOS INTERESAN LOS PARAMETROS 1,2 y 3 de users para nick, ip y port respectivamente
     resp_check = resp.split(' ')
     
     if resp_check[0] == 'NOK':
         return None
     resp_split = resp.split('#')
-    nick1 = resp_split[0].split(' ')[2]
     
-    all_nicks = nick1 + '\n' #O ' ' para separar nicks
-    for user in resp_split[1:]:
-        all_nicks += user  + '\n' #O ' ' para separar nicks
+    user1 = resp_split[0].split(' ')
+    info = user1[3] + ' ' + user1[4] + ' ' + user1[5] + '\n' #\n para separar por lineas
+    for x in resp_split[1:]:
+        user = x.split(' ')
+        info += user[0] + ' ' + user[1] + ' ' + user[2] + '\n' 
 
-
-    return all_nicks
+    return info
 
 
 def quit(server_socket):

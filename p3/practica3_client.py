@@ -10,7 +10,6 @@ import user_info
 import videollamada
 
 global sock
-
 sock = None
 
 class VideoClient(object):
@@ -94,12 +93,11 @@ class VideoClient(object):
 	def buttonsCallback(self, button):
 		global sock
 
-		#AÑADIR FUNCIONALIDAD POR CADA BOTON AÑADIDO
 		if button == "Salir":
 			# Salimos de la aplicación
 			sock.close()
 			self.app.stop()
-			exit()
+			#Pensando como destruir un hilo que es un pendejo y no muere
 		elif button == "Iniciar Sesion":
 			# Entrada del nick del usuario a conectar    
 			nick = self.app.getEntry("Nombre de usuario")
@@ -127,11 +125,12 @@ class VideoClient(object):
 				self.app.errorBox("Introduce un nombre de usuario")				
 			else:
 				nick_query = DS.query(nick)
+				nick_query = nick_query.split(' ')[2]
 				if not nick_query:
 					self.app.errorBox('No encontrado', 'El usuario con nick: '+ nick+ ' no existe')
 				else:
-					message = 'Nick: ' + nick_query['nick']+ '\n'
-					self.app.infoBox("Usuario: " + message)
+					message = 'Nick: ' + nick_query+ '\n' #La posicion 2 es la de nick
+					self.app.infoBox("Usuario: ", message)
 
 		elif button == "Listar usuarios":
 			users = DS.list_users()
@@ -144,6 +143,7 @@ class VideoClient(object):
 				if not user_search: 
 					self.app.errorBox('No encontrado', 'El usuario con nick: '+ nick+ ' no existe')
 				else:
+					user_search = user_search.split(' ')
 					videollamada.call(self, user_search)
 
 		elif button == "Pausar":

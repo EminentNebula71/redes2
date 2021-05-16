@@ -7,6 +7,7 @@ import threading
 import cv2
 import numpy as np
 from PIL import Image, ImageTk
+import time
 
 BUFF = 4096
 
@@ -16,14 +17,13 @@ def call(gui, user_called):
     user = user_info.get_user_info()
 
     called_user_address = (user_called[3], int(user_called[4]))
-
+    print(called_user_address)
     message = 'CALLING ' + user['nick'] + ' ' + str(user['port'])
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     if user['nick'] == user_called[2]:
         gui.app.infoBox('Llamada denegada.', 'Solo los locos hablan con ellos mismos.')
         return None
-
     sock.connect(called_user_address)
     sock.send(message.encode())
 
@@ -35,7 +35,7 @@ def call(gui, user_called):
 
     if response_split[0] == 'CALL_ACCEPTED':
         call_window(gui)
-        user_info.set_called_user(user_called)
+        user_info.set_called_user(user_called[2], user_called[3], user_called[4])
         captura_video = threading.Thread(target=capturaVideo, args=(gui, called_user_address))
         captura_video.start()
         proceso_llamada = threading.Thread(target=proceso_llamada, args=(gui, called_user_address))
@@ -43,10 +43,10 @@ def call(gui, user_called):
 
 
     elif response_split[0] == 'CALL_DENIED':
-        gui.app.infoBox('Llamada denegada.', 'El usuario '+ user_called['nick']+ ' no ha aceptado la llamada.')
+        gui.app.infoBox('Llamada denegada.', 'El usuario '+ user_called[2]+ ' no ha aceptado la llamada.')
         return None
     else:
-        gui.app.infoBox('Llamada denegada.', 'El usuario '+ user_called['nick']+ ' esta ya en llamada con otra persona.')
+        gui.app.infoBox('Llamada denegada.', 'El usuario '+ user_called[2]+ ' esta ya en llamada con otra persona.')
         return None
     
     return None
@@ -114,15 +114,14 @@ def proceso_llamada(gui):
     sock.bind((user['ip'], int(user['port'])))
 
     while user_info.enLlamada and user_info.on:
-        data, address = sock.recvfrom(60000)
+        data, address = sock.recvfrom(6000)
         decimg = cv2.imdecode(np.frombuffer(data, np.uint8),1)
         frame = cv2.resize(decimg, (640,480))
-
         cv2_im = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         img_tk = ImageTk.PhotoImage(image = Image.fromarray(cv2_im))
-
         gui.app.setImageData("video1", img_tk, fmt="PhotoImage")
-
+        while user_info.enPausa:
+            time.sleep(0.1)
     sock.close()            
 
 
@@ -132,31 +131,28 @@ def capturaVideo(gui, called_user_address):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     cap = cv2.VideoCapture(0)
 
-    if not cap.isOpened():
-        cap.open()
     while user_info.enLlamada and user_info.on:
         ret, frame = cap.read()
         frame = cv2.resize(frame, (640,480))
         param_codificado = [cv2.IMWRITE_JPEG_QUALITY, 50]
         result, encimg = cv2.inmencode('.jpg', frame, param_codificado)
         encimg = encimg.tobytes()
-
         sock.sendto(encimg, called_user_address)
+        while user_info.enPausa:
+            time.sleep(0.1)
+
     sock.close()
 
 
 
 def wait_call(gui, sock):
     user = user_info.get_user_info()
-
-    sock.listen(1)
+    sock.listen()
 
     while 1 and user_info.on:
         connection, address = sock.accept()
         peticion = connection.recv(4096)
-
         peticion_split = peticion.decode().split(' ')
-
         if peticion_split[0] == 'CALLING':
             if not user_info.enLlamada:
                 llamada_aceptada = gui.app.yesNoBox('Llamada entrante', 'Estas recibiendo una llamada de '+ peticion_split[1] + " ¿Aceptar?")
@@ -168,9 +164,10 @@ def wait_call(gui, sock):
                     connection.send(message.encode())
                     call_window(gui)
                     called_user = DS.query(peticion_split[1])
-                    user_info.set_called_user(called_user)
+                    called_user = called_user.split(' ')
+                    user_info.set_called_user(called_user[2], called_user[3], called_user[4])
 
-                    called_user_address = (called_user['ip'], int(called_user['port']))
+                    called_user_address = (called_user[3], int(called_user[4]))
                     captura_video = threading.Thread(target=capturaVideo, args=(gui, called_user_address),daemon=True)
                     captura_video.start()
                     proceso_llamada = threading.Thread(target=proceso_llamada, args=(gui, called_user_address),daemon=True)

@@ -51,6 +51,7 @@ def query(name):
 
 
 def list_users():
+    flag = 0
     message = 'LIST_USERS'
     resp = sendToServer(message)
     #COMPROBADO QUE NOS INTERESAN LOS PARAMETROS 1,2 y 3 de users para nick, ip y port respectivamente
@@ -63,8 +64,10 @@ def list_users():
     user1 = resp_split[0].split(' ')
     info = user1[3] + ' ' + user1[4] + ' ' + user1[5] + '\n' #\n para separar por lineas
     for x in resp_split[1:]:
-        user = x.split(' ')
-        info += user[0] + ' ' + user[1] + ' ' + user[2] + '\n' 
+        if flag < 10:
+            user = x.split(' ')
+            info += user[0] + ' ' + user[1] + ' ' + user[2] + '\n' 
+            flag +=1
 
     return info
 

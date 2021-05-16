@@ -45,6 +45,7 @@ def query(name):
     message = 'QUERY ' + name
 
     resp = sendToServer(message)
+    print(resp)
     return resp
 
 

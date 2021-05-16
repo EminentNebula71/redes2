@@ -92,12 +92,13 @@ class VideoClient(object):
 	# Función que gestiona los callbacks de los botones
 	def buttonsCallback(self, button):
 		global sock
+		global waiting_thread
 
+		#AÑADIR FUNCIONALIDAD POR CADA BOTON AÑADIDO
 		if button == "Salir":
 			# Salimos de la aplicación
 			sock.close()
 			self.app.stop()
-			#Pensando como destruir un hilo que es un pendejo y no muere
 		elif button == "Iniciar Sesion":
 			# Entrada del nick del usuario a conectar    
 			nick = self.app.getEntry("Nombre de usuario")
@@ -105,7 +106,7 @@ class VideoClient(object):
 			ip = self.app.getEntry("IP")
 			port = self.app.getEntry("Puerto")
 
-			resp = DS.register(nick, password, ip, port, 'v0')
+			resp = DS.register(nick, ip, port, password, 'v0')
 
 			if resp == "NOK":
 				self.app.errorBox("Inicio de sesión", "Error en el proceso de inicio de sesión")

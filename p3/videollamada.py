@@ -15,7 +15,7 @@ def call(gui, user_called):
     #tener en cuenta que 0 y 1 son OK y USER_FOUND
     user = user_info.get_user_info()
 
-    called_user_address = (user_called[3], user_called[4])
+    called_user_address = (user_called[3], int(user_called[4]))
 
     message = 'CALLING ' + user['nick'] + ' ' + str(user['port'])
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -46,7 +46,7 @@ def call(gui, user_called):
         gui.app.infoBox('Llamada denegada.', 'El usuario '+ user_called['nick']+ ' no ha aceptado la llamada.')
         return None
     else:
-        gui.app.infoBox('Llamada denegada.', 'El usuario '+ user_called['nick']+ ' esta ya en llamada.')
+        gui.app.infoBox('Llamada denegada.', 'El usuario '+ user_called['nick']+ ' esta ya en llamada con otra persona.')
         return None
     
     return None

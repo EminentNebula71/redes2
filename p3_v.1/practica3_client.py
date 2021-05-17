@@ -7,7 +7,7 @@ import cv2
 import socket
 import DS
 import user_info
-import videollamada
+import call_control
 
 global sock
 sock = None
@@ -39,9 +39,8 @@ class VideoClient(object):
 		
 		#Para capturar la camara en el menu de home
 		self.cap = cv2.VideoCapture(0)
-		if self.cap is None or not self.cap.isOpened():
+		if self.cap is None:
 			self.cap = None
-		print(self.cap)
 
 	def home(self):
 		user = user_info.get_user_info()
@@ -126,10 +125,8 @@ class VideoClient(object):
 				user_info.set_user_info(nick, ip, port)
 				sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 				user_address = (user['ip'], int(user['port']))
-				print(user_address)
 				sock.bind(user_address)
-				print(sock)
-				waiting_thread = threading.Thread(target=videollamada.wait_call, args =(self,sock, self.cap), daemon= True)
+				waiting_thread = threading.Thread(target=call_control.wait_call, args =(self,sock, self.cap), daemon= True)
 				waiting_thread.start()
 				self.home()
 
@@ -158,7 +155,7 @@ class VideoClient(object):
 					self.app.errorBox('No encontrado', 'El usuario con nick: '+ nick+ ' no existe')
 				else:
 					user_search = user_search.split(' ')
-					videollamada.call(self, user_search, self.cap)
+					call_control.call(self, user_search, self.cap)
 
 
 	def start(self):

@@ -1,4 +1,4 @@
-import videollamada
+import call_control
 import DS
 from practica3_client import VideoClient
 import user_info
@@ -13,7 +13,7 @@ import time
 global check
 check = 0
 
-class Video(object):
+class ControlVideo(object):
 
     def __init__(self, gui, cap):
         global check
@@ -22,8 +22,9 @@ class Video(object):
         self.frame_enviado = None
         if check is 0:
             self.gui.startSubWindow("Llamada", modal= True)
-            self.gui.setSize(640, 250)
+            self.gui.setSize(800, 520)
             self.gui.addImage("webcam", "img/webcam.gif")
+            self.gui.setImageSize("webcam", 640, 480)
             self.gui.addButtons(["Pausar", "Reanudar", "Colgar"], self.buttonsCallback)
             self.gui.stopSubWindow()
             check = 1
@@ -31,6 +32,7 @@ class Video(object):
     def start(self):
         self.gui.hideImage("video1")
         self.gui.hide()
+        self.gui.showImage("webcam")
         self.gui.showSubWindow("Llamada")
 
         user_info.enLlamada = True
@@ -82,15 +84,15 @@ class Video(object):
     def buttonsCallback(self, button):
         if button == "Pausar":
             user_info.enPausa = True
-            videollamada.hold_call()
+            call_control.hold_call()
 
         elif button == "Reanudar":
             user_info.enPausa= False
-            videollamada.resume_call()
+            call_control.resume_call()
 
         elif button == "Colgar":
             user_info.enLlamada= False
-            videollamada.end_call()
+            call_control.end_call()
             time.sleep(0.1)
             self.gui.hideImage("webcam")
             self.gui.showImage("video1")

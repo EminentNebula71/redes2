@@ -8,7 +8,7 @@ import cv2
 import numpy as np
 from PIL import Image, ImageTk
 import time
-from video import Video
+from video_control import ControlVideo
 
 global send_check
 send_check = None
@@ -39,7 +39,7 @@ def call(gui, user_called, cap):
     if response_split[0] == 'CALL_ACCEPTED':
         user_info.set_called_user(user_called[2], user_called[3], user_called[4])
         
-        llamada = Video(gui, cap)
+        llamada = ControlVideo(gui, cap)
         llamada.start()
 
     elif response_split[0] == 'CALL_DENIED':
@@ -122,7 +122,7 @@ def wait_call(gui, sock, cap):
                     called_user = DS.query(peticion_split[1])
                     called_user = called_user.split(' ')
                     user_info.set_called_user(called_user[2], called_user[3], called_user[4])
-                    llamada = Video(gui, cap)
+                    llamada = ControlVideo(gui, cap)
                     llamada.start()
             else:
                 message = 'CALL_BUSY'

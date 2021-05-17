@@ -37,8 +37,11 @@ class VideoClient(object):
 		self.app.addButton("Iniciar Sesion", self.buttonsCallback)
 		
 		
-		
-
+		#Para capturar la camara en el menu de home
+		self.cap = cv2.VideoCapture(0)
+		if self.cap is None or not self.cap.isOpened():
+			self.cap = None
+		print(self.cap)
 
 	def home(self):
 		user = user_info.get_user_info()
@@ -54,11 +57,11 @@ class VideoClient(object):
 		self.app.addLabel("title", "Cliente Multimedia P2P - Redes2- "+ user['nick'])
 		self.app.addImage("video1", "img/false_webcam.gif")
 
-		#Para capturar la camara en el menu de home
-		self.cap = cv2.VideoCapture(0)
+
 		self.app.setPollTime(20)
 		self.app.registerEvent(self.capturaVideo)
-		
+
+
 		# Añadir los botones
 		self.app.addButtons(["Llamar", "Listar usuarios", "Buscar usuario", "Salir"], self.buttonsCallback)
 
@@ -70,13 +73,13 @@ class VideoClient(object):
 
 	def capturaVideo(self):
 		# Capturamos un frame de la cámara o del vídeo
-		ret, frame = self.cap.read()
-		frame = cv2.resize(frame, (640,480))
-		cv2_im = cv2.cvtColor(frame,cv2.COLOR_BGR2RGB)
-		img_tk = ImageTk.PhotoImage(Image.fromarray(cv2_im))		    
-
-		# Lo mostramos en el GUI
-		self.app.setImageData("video1", img_tk, fmt = 'PhotoImage')
+		if  self.cap is not None:
+			ret, frame = self.cap.read()
+			frame = cv2.resize(frame, (640,480))
+			cv2_im = cv2.cvtColor(frame,cv2.COLOR_BGR2RGB)
+			img_tk = ImageTk.PhotoImage(Image.fromarray(cv2_im))		    
+			# Lo mostramos en el GUI
+			self.app.setImageData("video1", img_tk, fmt = 'PhotoImage')
 
 
 
@@ -126,7 +129,7 @@ class VideoClient(object):
 				print(user_address)
 				sock.bind(user_address)
 				print(sock)
-				waiting_thread = threading.Thread(target=videollamada.wait_call, args =(self,sock))
+				waiting_thread = threading.Thread(target=videollamada.wait_call, args =(self,sock, self.cap), daemon= True)
 				waiting_thread.start()
 				self.home()
 
@@ -155,7 +158,7 @@ class VideoClient(object):
 					self.app.errorBox('No encontrado', 'El usuario con nick: '+ nick+ ' no existe')
 				else:
 					user_search = user_search.split(' ')
-					videollamada.call(self, user_search)
+					videollamada.call(self, user_search, self.cap)
 
 
 	def start(self):

@@ -15,7 +15,7 @@ send_check = None
 
 BUFF = 4096
 
-def call(gui, user_called):
+def call(gui, user_called, cap):
     #user_called es la respuesta de la query, en un array separado por espacios
     #tener en cuenta que 0 y 1 son OK y USER_FOUND
     user = user_info.get_user_info()
@@ -39,9 +39,8 @@ def call(gui, user_called):
     if response_split[0] == 'CALL_ACCEPTED':
         user_info.set_called_user(user_called[2], user_called[3], user_called[4])
         
-        llamada = Video(gui)
+        llamada = Video(gui, cap)
         llamada.start()
-
 
     elif response_split[0] == 'CALL_DENIED':
         gui.app.infoBox('Llamada denegada.', 'El usuario '+ user_called[2]+ ' no ha aceptado la llamada.')
@@ -103,7 +102,7 @@ def end_call():
 
 
 
-def wait_call(gui, sock):
+def wait_call(gui, sock, cap):
     user = user_info.get_user_info()
     sock.listen()
 
@@ -123,7 +122,7 @@ def wait_call(gui, sock):
                     called_user = DS.query(peticion_split[1])
                     called_user = called_user.split(' ')
                     user_info.set_called_user(called_user[2], called_user[3], called_user[4])
-                    llamada = Video(gui)
+                    llamada = Video(gui, cap)
                     llamada.start()
             else:
                 message = 'CALL_BUSY'

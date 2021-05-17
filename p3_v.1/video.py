@@ -12,27 +12,26 @@ import time
 
 class Video(object):
 
-    def __init__(self, gui):
+    def __init__(self, gui, cap):
         self.gui = gui.app
+        self.cap = cap
         self.frame_enviado = None
-        print("Atun")
         self.gui.startSubWindow("Llamada en curso", modal= True)
         self.gui.setSize(640, 250)
         self.gui.addImage("webcam", "img/webcam.gif")
         self.gui.addButtons(["Pausar", "Reanudar", "Colgar"], self.buttonsCallback)
-        
-        self.cv = cv2.VideoCapture(0)
-        self.gui.setPollTime(20)
+        self.gui.stopSubWindow()
 
     def start(self):
-        self.gui.stop()
+        self.gui.hideImage("video1")
+        self.gui.hide()
         self.gui.showSubWindow("Llamada en curso")
 
         user_info.enLlamada = True
 
-        self.envio = threading.Thread(target=self.envioVideo, args=())
+        self.envio = threading.Thread(target=self.envioVideo, args=(), daemon= True)
         self.envio.start()
-        self.recepcion = threading.Thread(target=self.recibirVideo, args=())
+        self.recepcion = threading.Thread(target=self.recibirVideo, args=(), daemon= True)
         self.recepcion.start()
 
 
@@ -43,16 +42,17 @@ class Video(object):
         
 
         while user_info.enLlamada:
-            ret, frame = self.cv.read()
-                       
-            frame = cv2.resize(frame, (800,600))
-            self.frame_enviado = cv2.resize(frame, (800,600))
-            param_codificado = [cv2.IMWRITE_JPEG_QUALITY, 50]
-            result, encimg = cv2.imencode('.jpg', frame, param_codificado)
-            if result == False:
-                print('Error al codificar la imagen')
-            encimg = encimg.tobytes()
-            sock.sendto(encimg, called_user_address)
+            if self.cap != None:
+                print("BBBBBBBBBBBBBBBBBB")
+                ret, frame = self.cap.read()
+                frame = cv2.resize(frame, (800,600))
+                self.frame_enviado = cv2.resize(frame, (800,600))
+                param_codificado = [cv2.IMWRITE_JPEG_QUALITY, 50]
+                result, encimg = cv2.imencode('.jpg', frame, param_codificado)
+                if result == False:
+                    print('Error al codificar la imagen')
+                encimg = encimg.tobytes()
+                sock.sendto(encimg, called_user_address)
         sock.close()
         return "OK"
 
@@ -67,6 +67,7 @@ class Video(object):
             data, address = sock.recvfrom(60000)
             decimg = cv2.imdecode(np.frombuffer(data, np.uint8),1)
             if self.frame_enviado is not None:
+                print("AAAAAAAAAAAAAA")
                 frame = cv2.resize(decimg, (800,600))
                 frame_peque = self.frame_enviado
                 frame_compuesto = frame

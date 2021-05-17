@@ -4,10 +4,10 @@ SRC=./codigo
 OBJ=./obj
 LIB=./libreria
 
-all: create_dir clean ${OBJ}/picohttpparser.o ${OBJ}/processrequest.o  main
+all: create_dir clean ${OBJ}/picohttpparser.o ${OBJ}/processrequest.o  practica1_cliente
 
-main: ${OBJ}/main.o
-	$(CC) $(CFLAGS) -o server ${OBJ}/main.o ${LIB}/processrequest.a  ${LIB}/picoparserlib.a
+practica1_cliente: ${OBJ}/practica1_cliente.o
+	$(CC) $(CFLAGS) -o server ${OBJ}/practica1_cliente.o ${LIB}/processrequest.a  ${LIB}/picoparserlib.a
 
 ${OBJ}/processrequest.o: codigo/processrequest.c codigo/processrequest.h
 	$(CC) $(CFLAGS) -I./codigo -c $< -o $@
@@ -16,7 +16,7 @@ ${OBJ}/processrequest.o: codigo/processrequest.c codigo/processrequest.h
 ${OBJ}/picohttpparser.o: codigo/picohttpparser.c codigo/picohttpparser.h
 	$(CC) $(CFLAGS) -c $< -o $@
 	ar rcs ${LIB}/picoparserlib.a ${OBJ}/picohttpparser.o
-${OBJ}/main.o: ${SRC}/main.c
+${OBJ}/practica1_cliente.o: ${SRC}/practica1_cliente.c
 	$(CC) $(CFLAGS) -I./src -c $< -o $@
 
 

@@ -22,7 +22,7 @@
 
 #define MAX_BUFFER 16384
 
-
+/*Array de estructuras con la informacion de los tipos de archivo(tipos) y la extension del archivo(arch)*/
 struct
 {
     char *tipo;
@@ -50,7 +50,6 @@ config configu;
 //Coge la informacion del fichero para poder facilitar la conexion con el server
 config getServerConfig(){
     FILE* c;
-    int i;
     char* string;
     c=fopen("server.conf", "r");
     string = malloc(sizeof(configu.server_root)*sizeof(char));
@@ -66,10 +65,10 @@ config getServerConfig(){
     strcpy(configu.max_clients, strtok(NULL, "="));
     free(string);
 
-    string = malloc(sizeof(configu.listen_port)*sizeof(char));
-    fgets(string, sizeof(configu.listen_port), c);
+    string = malloc(sizeof(configu.port)*sizeof(char));
+    fgets(string, sizeof(configu.port), c);
     strtok(string, "=");
-    strcpy(configu.listen_port, strtok(NULL, "="));
+    strcpy(configu.port, strtok(NULL, "="));
     free(string);
 
     string = malloc(sizeof(configu.server_signature)*sizeof(char));
@@ -83,29 +82,17 @@ config getServerConfig(){
 }
 
 
-//Esta funcion procesa la peticion es compleja, asi que la vamos a dividir en partes
-void *processRequest(void *clientfd){
-    configu = getServerConfig();
+/*Aqui usamos la libreia y el archivo para parsear la peticion*/
+void *parseaRequest(void *clientfd){
     struct phr_header headers[500];
-    struct sockaddr_in client_address;
-    struct stat filestat;
-    time_t tim = time(NULL);
-    struct tm *t_stand = localtime(&tim);
-    struct tm *last_modification;
     int client= *(int*)clientfd;
-    int parse_return, version, flag=0, file_id, file_length;
+    int parse_return, version;
     const char * method, *path;
-    socklen_t addrlen = sizeof(client_address);
     size_t num_headers, method_len, path_len;
     ssize_t recv_size, buffer_len=0, previous_buffer_len=0;
-    char buffer[MAX_BUFFER], path_root[MAX_BUFFER], path_file[MAX_BUFFER], path_file_aux[MAX_BUFFER], tipo[20], script[50], script_2[50];
+    char buffer[MAX_BUFFER];
     memset(buffer, '\0', MAX_BUFFER);
-    memset(path_root, '\0', MAX_BUFFER);
-    memset(path_file, '\0', MAX_BUFFER);
-    memset(path_file_aux, '\0', MAX_BUFFER);
 
-    pthread_detach(pthread_self());
-    getpeername(client, (struct sockaddr *)&client_address ,&addrlen);
     //recibimos y parseamos la peticion
     while(1){
         recv_size = recv(client, buffer, sizeof(buffer)-1, 0);
@@ -130,17 +117,32 @@ void *processRequest(void *clientfd){
             badRequest(client, buffer);
         }
     }
+    processRequest(client, buffer, path, method, path_len, version);
+}
 
-    strcpy(path_root, configu.server_root);
+/*Procesa la peticion del cliente*/
+void* processRequest(int client, char* buffer, const char* path, const char* method, size_t path_len, int version){
+    char server_root[MAX_BUFFER], file_root[MAX_BUFFER], file_root_aux[MAX_BUFFER], tipo[20];
+    configu = getServerConfig();
+    struct stat filestat;
+    time_t tim = time(NULL);
+    char script[50], script_path[50];
+    int file_length;
+    struct tm *t_stand = localtime(&tim);
+    int flag=0, file_id;
+    memset(server_root, '\0', MAX_BUFFER);
+    memset(file_root, '\0', MAX_BUFFER);
+    memset(file_root_aux, '\0', MAX_BUFFER);
+    strcpy(server_root, configu.server_root);
     
-    //Modificamos el path
+    //Modificamos el path para cargar el index.html y coger las peticiones para la carga de la pagina
     if(!strncmp(path, "/", path_len)){
-        strcat(path_root, "/index.html");
-        path_len=strlen(path_root);
+        strcat(server_root, "/index.html");
+        path_len=strlen(server_root);
     }
     else{
-        strncat(path_root, path, path_len);
-        path_len=strlen(path_root);
+        strncat(server_root, path, path_len);
+        path_len=strlen(server_root);
     }
 
     //Aqui observamos que metodo es el que quiere hacer la peticion y llamar a la respuesta correspondiente
@@ -151,52 +153,52 @@ void *processRequest(void *clientfd){
 
     //Caso de Post, convertimos la peticion en una peticion get
     if(!strncmp(method, "POST", 4) || !strncmp(method, "post", 4)){
-        changePostPetition(&path_len, path_root, buffer);
+        changePostPetition(&path_len, server_root, buffer);
     }
 
 
-    //Obtenemos el nombre del script, en caso de haberlo
-    strcpy(script_2, path_root);
-    strcpy(script, strtok(script_2, "?"));
+    /////////////////////////////////////////// AQUI YA SE TRATA LA PETICION ///////////////////////////////////////////
+    strcpy(script_path, server_root);
+    strcpy(script, strtok(script_path, "?"));
+    struct tm *last_modification;
     //Miramos si es python o php
     if(!strcmp(script+strlen(script)-3, ".py") || !strcmp(script+strlen(script)-4, ".php")){
-        char command[MAX_BUFFER];
+        char comando_script[MAX_BUFFER];
         //En caso de ser python ponemos python3 al principio del comando
         if(!strcmp(script+strlen(script)-3, ".py"))
-            strcpy(command, "python3 ");
+            strcpy(comando_script, "python3 ");
         //En caso de ser php ponemos php al principio del comando
         else
-            strcpy(command, "php ");
+            strcpy(comando_script, "php ");
         //Le metemos el script para realizar su ejecucion
-        strcat(command, script);
+        strcat(comando_script, script);
         while(strtok(NULL, "=")!=NULL){
-            strcat(command, " ");
-            strcat(command, strtok(NULL, "&"));
+            strcat(comando_script, " ");
+            strcat(comando_script, strtok(NULL, "&"));
         }
 
-        strcat(command, " > ./files/output.txt");
+        strcat(comando_script, " > ./files/output.txt");
         //Si falla hacemos badRequest
-        if(system(command)==-1){
+        if(system(comando_script)==-1){
             badRequest(client, buffer);
         }
         else
             flag = 1;
         
-        strcpy(path_file, "./files/output.txt");
+        strcpy(file_root, "./files/output.txt");
     }
     else{
-        strcpy(path_file_aux, path_root);
-        strcpy(path_file, strtok(path_file_aux, "?"));
+        strcpy(file_root_aux, server_root);
+        strcpy(file_root, strtok(file_root_aux, "?"));
     }
-    path_len = strlen(path_file);
+    path_len = strlen(file_root);
 
-    if(stat(path_file, &filestat) < 0){
+    if(stat(file_root, &filestat) < 0){
         notFound(client, buffer);
     }
-
     last_modification = gmtime(&filestat.st_mtime);
     
-    strcpy(tipo, comprobar_tipo(path_file, path_len));
+    strcpy(tipo, comprobar_tipo(file_root, path_len));
 
     if(!strcmp(tipo, "not_defined")){
         if(flag==1){
@@ -206,7 +208,7 @@ void *processRequest(void *clientfd){
     }
     //abrimos el archivo, si no lo logramos, pero antes hemos marcado que se ha creado hacemos el comando de borrado
     // y devolvemos notFound
-    file_id = open(path_file, O_RDONLY);
+    file_id = open(file_root, O_RDONLY);
     if (file_id == -1){
         if(flag == 1)
             system("rm ./files/output.txt");
@@ -215,7 +217,8 @@ void *processRequest(void *clientfd){
 
     file_length = lseek(file_id, 0, SEEK_END);
     lseek(file_id, 0, SEEK_SET);
-    //estructura de repuesta correcta
+
+    //////////////////////////////////RESPUESTA CORRECTA //////////////////////////////////////////////
     sprintf(buffer, "HTTP/1.%d 200 OK\r\n"
                     "Server: %s\r\n"
                     "Date: %s, %d %s %d %d:%d:%d\r\n"
@@ -232,9 +235,7 @@ void *processRequest(void *clientfd){
             last_modification->tm_hour, last_modification->tm_min, last_modification->tm_sec,
             file_length,
             tipo);
-
     send(client, buffer, strlen(buffer), 0);
-
     while ((file_length = read(file_id, buffer, MAX_BUFFER))>0){
         send(client, buffer, file_length, 0);
     }
@@ -244,12 +245,14 @@ void *processRequest(void *clientfd){
     if (flag==1){
         system("rm ./files/output.txt");
     }
+
     close(client);
     pthread_exit(NULL);
 }
 
 //FUNCIONES DE APOYO
 
+/*Usamos el array de la estructura definida arriba para ver que tipo de archivo sería*/
 char* comprobar_tipo(char* file, size_t file_len){
     char *tipo = malloc (sizeof (char) * 20);;
     int len_arch;
@@ -264,23 +267,24 @@ char* comprobar_tipo(char* file, size_t file_len){
     return tipo;
 }
 
-
-void changePostPetition(size_t* path_len, char* path_root, char* buffer){
-    char* mensaje = strstr(buffer, "\r\n\r\n"); 
-        mensaje += 4*sizeof(char);
-        if(!strstr(path_root, "?")){
-            strcat(path_root, "?");
-        }
-        else{
-            strcat(path_root, "&");
-        }
-        strcat(path_root, mensaje);
-       *path_len += 1 + strlen(mensaje);
+/*Cambiamos el Post para hacer parecido a una peticion get y coger sus argumentos mas fácilmente*/
+void changePostPetition(size_t* path_len, char* server_root, char* buffer){
+    char* mensaje = strstr(buffer, "\r\n\r\n");
+    mensaje += 4*sizeof(char);
+    if(!strstr(server_root, "?")){
+        strcat(server_root, "?");
+    }
+    else{
+        strcat(server_root, "&");
+    }
+    strcat(server_root, mensaje);
+    *path_len += 1 + strlen(mensaje);
 }
 
 
 //FUNCIONES DE RESPUESTA
 
+/*Devuelve la cabecera de options*/
 void options(int cliente, char* buffer){
     time_t tim = time(NULL);
     int version = 0;
@@ -301,6 +305,7 @@ void options(int cliente, char* buffer){
     pthread_exit(NULL);
 }
 
+/*Devuelve la cabecera de badRequest*/
 void badRequest(int cliente, char* buffer){
     time_t tim = time(NULL);
     int version = 0;
@@ -324,6 +329,7 @@ void badRequest(int cliente, char* buffer){
 
 }
 
+/*Devuelve la cabecera de notFound*/
 void notFound(int cliente, char* buffer){
     time_t tim = time(NULL);
     int version = 0;

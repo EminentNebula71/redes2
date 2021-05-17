@@ -10,22 +10,28 @@ import threading
 import sys
 import time
 
+global check
+check = 0
+
 class Video(object):
 
     def __init__(self, gui, cap):
+        global check
         self.gui = gui.app
         self.cap = cap
         self.frame_enviado = None
-        self.gui.startSubWindow("Llamada en curso", modal= True)
-        self.gui.setSize(640, 250)
-        self.gui.addImage("webcam", "img/webcam.gif")
-        self.gui.addButtons(["Pausar", "Reanudar", "Colgar"], self.buttonsCallback)
-        self.gui.stopSubWindow()
+        if check is 0:
+            self.gui.startSubWindow("Llamada", modal= True)
+            self.gui.setSize(640, 250)
+            self.gui.addImage("webcam", "img/webcam.gif")
+            self.gui.addButtons(["Pausar", "Reanudar", "Colgar"], self.buttonsCallback)
+            self.gui.stopSubWindow()
+            check = 1
 
     def start(self):
         self.gui.hideImage("video1")
         self.gui.hide()
-        self.gui.showSubWindow("Llamada en curso")
+        self.gui.showSubWindow("Llamada")
 
         user_info.enLlamada = True
 
@@ -43,10 +49,9 @@ class Video(object):
 
         while user_info.enLlamada:
             if self.cap != None:
-                print("BBBBBBBBBBBBBBBBBB")
                 ret, frame = self.cap.read()
-                frame = cv2.resize(frame, (800,600))
-                self.frame_enviado = cv2.resize(frame, (800,600))
+                frame = cv2.resize(frame, (640,480))
+                self.frame_enviado = cv2.resize(frame, (640,480))
                 param_codificado = [cv2.IMWRITE_JPEG_QUALITY, 50]
                 result, encimg = cv2.imencode('.jpg', frame, param_codificado)
                 if result == False:
@@ -55,7 +60,6 @@ class Video(object):
                 sock.sendto(encimg, called_user_address)
         sock.close()
         return "OK"
-
 
     def recibirVideo(self):
 
@@ -66,17 +70,12 @@ class Video(object):
         while user_info.enLlamada:
             data, address = sock.recvfrom(60000)
             decimg = cv2.imdecode(np.frombuffer(data, np.uint8),1)
-            if self.frame_enviado is not None:
-                print("AAAAAAAAAAAAAA")
-                frame = cv2.resize(decimg, (800,600))
-                frame_peque = self.frame_enviado
-                frame_compuesto = frame
-                frame_compuesto[0:frame_peque.shape[0], 0:frame_peque.shape[1]] = frame_peque
-                cv2_im = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                img_tk = ImageTk.PhotoImage(image = Image.fromarray(cv2_im))
-                self.gui.setImageData("webcam", img_tk, fmt="PhotoImage")
-                while user_info.enPausa:
-                    time.sleep(0.1)
+            frame = cv2.resize(decimg, (640,480))
+            cv2_im = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            img_tk = ImageTk.PhotoImage(image = Image.fromarray(cv2_im))
+            self.gui.setImageData("webcam", img_tk, fmt="PhotoImage")
+            while user_info.enPausa:
+                time.sleep(0.1)
         sock.close()            
         return "OK"
 
@@ -92,5 +91,9 @@ class Video(object):
         elif button == "Colgar":
             user_info.enLlamada= False
             videollamada.end_call()
-            self.gui.stopSubWindow("Llamada en curso")
+            time.sleep(0.1)
+            self.gui.hideImage("webcam")
+            self.gui.showImage("video1")
             self.gui.show()
+            self.gui.hideSubWindow("Llamada")
+            

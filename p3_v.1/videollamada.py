@@ -133,7 +133,8 @@ def wait_call(gui, sock, cap):
             user_info.enPausa = False
         elif peticion_split[0] == 'CALL_END':
             user_info.enLlamada = False
-            gui.app.stopSubWindow()
+            gui.app.hideSubWindow("Llamada")
+            gui.app.showImage("video1")
             gui.app.show()
 
     connection.close()
